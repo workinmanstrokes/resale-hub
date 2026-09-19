@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Resale Hub",
+    "slug": "resale-hub",
+    "scheme": "resalehub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Resale Hub uses your photo library so you can add photos to a listing.",
+          "cameraPermission": "Resale Hub uses your camera so you can take photos for a listing."
+        }
+      ],
+      "expo-file-system"
+    ]
+  }
+}
