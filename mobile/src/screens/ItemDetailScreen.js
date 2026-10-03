@@ -13,7 +13,9 @@ export default function ItemDetailScreen({ route }) {
       )}
       <Text style={styles.title}>{selected.title}</Text>
       <Text style={styles.subtitle}>
-        {selected.marketplace.toUpperCase()} · {selected.condition}
+        {selected.marketplace === 'ebay' ? 'eBay' : 'Etsy'}
+        {selected.condition !== 'unknown' ? ` · ${selected.condition}` : ''}
+        {selected.shippingPrice > 0 ? ` · incl. $${selected.shippingPrice.toFixed(2)} shipping` : ''}
       </Text>
       <Text style={styles.price}>${selected.totalPrice.toFixed(2)}</Text>
       <Pressable style={styles.linkButton} onPress={() => Linking.openURL(selected.url)}>
@@ -34,7 +36,7 @@ export default function ItemDetailScreen({ route }) {
           <Pressable style={styles.row} onPress={() => Linking.openURL(item.url)}>
             <Text style={styles.rowTitle} numberOfLines={1}>
               {item.bestDeal ? '🏆 ' : ''}
-              {item.marketplace.toUpperCase()} — {item.title}
+              {item.marketplace === 'ebay' ? 'eBay' : 'Etsy'} — {item.title}
             </Text>
             <Text style={styles.rowPrice}>${item.totalPrice.toFixed(2)}</Text>
           </Pressable>
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
   price: { fontSize: 24, fontWeight: '800', marginTop: 8 },
   linkButton: {
     marginTop: 12,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0F766E',
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',

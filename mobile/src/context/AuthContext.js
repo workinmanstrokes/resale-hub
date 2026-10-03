@@ -1,55 +1,67 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { api, getToken, setToken, clearToken } from '../api/client';
+import { api } from '../api/client';
+import * as fbAuth from '../api/firebaseAuth';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [initializing, setInitializing] = useState(true);
-  const [authToken, setAuthToken] = useState(null);
 
   const refreshUser = useCallback(async () => {
     try {
       const data = await api.me();
       setUser(data.user);
       return data.user;
-    } catch {
-      // Token might be expired/invalid — treat as logged out.
-      await clearToken();
-      setAuthToken(null);
-      setUser(null);
+    } catch (err) {
+      if (err.status === 401) {
+        await fbAuth.signOut();
+        setSession(null);
+        setUser(null);
+      }
       return null;
     }
   }, []);
 
   useEffect(() => {
     (async () => {
-      const token = await getToken();
-      setAuthToken(token);
-      if (token) await refreshUser();
+      const restored = await fbAuth.restoreSession().catch(() => null);
+      setSession(restored);
+      if (restored) await refreshUser();
       setInitializing(false);
     })();
   }, [refreshUser]);
 
-  const login = useCallback(async (email, password) => {
-    const data = await api.login(email, password);
-    await setToken(data.token);
-    setAuthToken(data.token);
-    setUser(data.user);
-    return data.user;
-  }, []);
+  const login = useCallback(
+    async (email, password) => {
+      setSession(await fbAuth.signIn(email, password));
+      return refreshUser();
+    },
+    [refreshUser]
+  );
 
-  const register = useCallback(async (email, password) => {
-    const data = await api.register(email, password);
-    await setToken(data.token);
-    setAuthToken(data.token);
-    setUser(data.user);
-    return data.user;
-  }, []);
+  const register = useCallback(
+    async (email, password) => {
+      if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+      setSession(await fbAuth.signUp(email, password));
+      return refreshUser();
+    },
+    [refreshUser]
+  );
 
   const logout = useCallback(async () => {
-    await clearToken();
-    setAuthToken(null);
+    await fbAuth.signOut();
+    setSession(null);
+    setUser(null);
+  }, []);
+
+  // Re-checks the password, then deletes listings, photos, eBay link and the account.
+  const deleteAccount = useCallback(async (password) => {
+    await fbAuth.reauthenticate(password);
+    await api.deleteAccount();
+    await fbAuth.signOut();
+    setSession(null);
     setUser(null);
   }, []);
 
@@ -57,15 +69,17 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       setUser,
-      authToken,
       initializing,
-      isLoggedIn: Boolean(authToken),
+      isLoggedIn: Boolean(session),
+      email: session?.email || user?.email || null,
       login,
       register,
       logout,
+      deleteAccount,
       refreshUser,
+      sendPasswordReset: fbAuth.sendPasswordReset,
     }),
-    [user, authToken, initializing, login, register, logout, refreshUser]
+    [user, session, initializing, login, register, logout, deleteAccount, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

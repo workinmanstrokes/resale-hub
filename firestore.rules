@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// All writes go through the API (Cloud Functions, Admin SDK), which validates input
+// and applies per-user rate limits. Clients may only read their own data, and can
+// never read eBay OAuth tokens, rate-limit counters or OAuth state.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+
+      match /private/{doc} {
+        allow read, write: if false;
+      }
+    }
+
+    match /listings/{listingId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+
+    match /oauthStates/{id} {
+      allow read, write: if false;
+    }
+  }
+}

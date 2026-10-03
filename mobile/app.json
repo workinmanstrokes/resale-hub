@@ -7,16 +7,29 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "description": "Find deals across eBay and Etsy, sorted by total price, and list your own items on eBay from your phone.",
+    "primaryColor": "#0F766E",
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.diddlerrr.resalehub",
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.diddlerrr.resalehub",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0F766E",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,10 +41,20 @@
         "expo-image-picker",
         {
           "photosPermission": "Resale Hub uses your photo library so you can add photos to a listing.",
-          "cameraPermission": "Resale Hub uses your camera so you can take photos for a listing."
+          "cameraPermission": "Resale Hub uses your camera so you can take photos for a listing.",
+          "microphonePermission": false
         }
       ],
-      "expo-file-system"
+      "expo-file-system",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0F766E"
+        }
+      ]
     ]
   }
 }

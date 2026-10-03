@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Photos are uploaded through the API (type/size checks + rate limits) into
+// users/<uid>/photos/. Owners can read their own files with the SDK; marketplaces
+// such as eBay read them through the per-file download-token URL the API returns.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

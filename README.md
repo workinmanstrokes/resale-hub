@@ -1,73 +1,54 @@
 # Resale Hub
 
-A mobile "selling hub" that combines two things:
+A mobile "selling hub" for resellers, by **Diddlerrr**:
 
-1. **Sell**: create a listing once, then publish it out to multiple marketplaces from one dashboard.
-2. **Search**: search a product and see results aggregated across marketplaces, ranked by total price, to find the best deal.
+1. **Find a deal (Search):** search once and see live eBay and Etsy results in one list, ranked by total price (item + shipping), with the best deal flagged. No account needed.
+2. **Sell:** create a listing (title, description, price, condition, category, photos), pick a real eBay category, publish it to your own eBay seller account, then edit, republish or delete it from **My Listings**.
 
-## What's real vs. what's not (important)
+## What's real vs. what's not
 
-This app only talks to marketplaces that actually publish free, accessible developer APIs:
-
-| Marketplace | Search | Publish (list an item) | Why |
+| Marketplace | Search | Publish | Why |
 |---|---|---|---|
-| **eBay** | ✅ real (Browse API) | ✅ real (Sell API, needs OAuth) | Free developer program |
-| **Etsy** | ✅ real (Open API v3) | ❌ | Etsy doesn't grant listing-creation scope to typical third-party apps |
-| Facebook Marketplace, Poshmark, Mercari, OfferUp, Depop | ❌ | ❌ | No public developer API exists |
+| **eBay** | ✅ Browse API | ✅ Inventory API, per-user OAuth | Free developer program |
+| **Etsy** | ✅ Open API v3 (images + US shipping) | ❌ | Etsy doesn't grant listing-creation scope to apps like this |
+| Facebook Marketplace, Poshmark, Mercari, OfferUp, Depop | ❌ | ❌ | No public developer API |
 
-The unsupported marketplaces are **not** faked with sample data — they show up in the app clearly labeled "not available" with the reason why. The adapter architecture (`server/src/adapters/`) makes it straightforward to plug one in for real if you ever get partner/API access to one of them.
+Unsupported marketplaces are never faked; the Publish screen lists them as "Not available for publishing" and only lets you select ones that really publish.
 
-Search and publish both degrade gracefully: if you haven't added an API key for a marketplace, it's just skipped (and the UI tells you which sources were skipped and why) instead of erroring out.
-
-## Project layout
+## Layout
 
 ```
-server/   Node/Express API: auth, listings, marketplace adapters, search aggregation
-mobile/   Expo (React Native) app: Search, Sell, My Listings, Account tabs
+mobile/      Expo SDK 57 app (iOS + Android), bundle id / package com.diddlerrr.resalehub
+functions/   Cloud Functions (Node 22) Express API: auth, listings, uploads, eBay, search
+web/         Firebase Hosting: privacy policy, support, account deletion pages
+firebase.json, firestore.rules, storage.rules, firestore.indexes.json
+docs/FIREBASE_SETUP.md   step-by-step project setup, secrets, deploy, env vars, store builds
 ```
 
-## Running it
+## Architecture
 
-### 1. Server
+- **Auth:** Firebase Authentication (email/password) via its REST API from the app; the API verifies Firebase ID tokens.
+- **Data:** Cloud Firestore. `users/{uid}` (profile + eBay settings), `users/{uid}/private/ebay` (OAuth tokens, server-only), `listings/{id}`. Clients can only read their own docs; all writes go through the API.
+- **Photos:** uploaded through the API into Cloud Storage `users/{uid}/photos/`, returned as public download-token URLs so eBay listings keep their images.
+- **eBay:** each user connects their own seller account (OAuth). After connecting, the API reads their business policies (Account API) and inventory locations and stores them per user; users can pick which to use or add a location by ZIP. Categories come from the Taxonomy API (`getCategorySuggestions`). eBay Marketplace Account Deletion notifications are handled.
+- **Rate limiting:** per-user (per-IP when signed out) fixed-window limits in Firestore.
+- **Account deletion:** in-app (Account → Delete account) deletes listings, photos, eBay data and the auth record.
 
-```
-cd server
-npm install
-cp .env.example .env
-```
+## Getting started
 
-Edit `.env`:
-- `JWT_SECRET`: any long random string.
-- `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET`: free at https://developer.ebay.com — sign up, create an application keyset. Use `EBAY_ENV=sandbox` while testing, `production` for real listings/search.
-- `EBAY_REDIRECT_URI`: register this exact URL in your eBay app's OAuth settings (the "Your auth accepted URL" / RuName config). Defaults to `http://localhost:4000/api/ebay/oauth/callback`.
-- `ETSY_API_KEY`: free at https://www.etsy.com/developers — register an app to get a keystring.
+See **[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)**. Short version:
 
-Then:
-```
-npm run dev
-```
-The server listens on `http://localhost:4000` and logs which marketplaces are configured on startup.
-
-To actually publish a listing to eBay, the seller's eBay account also needs **business policies** (payment/return/fulfillment) set up once on eBay's side, and you'll need to set `EBAY_MERCHANT_LOCATION_KEY`, `EBAY_FULFILLMENT_POLICY_ID`, `EBAY_PAYMENT_POLICY_ID`, `EBAY_RETURN_POLICY_ID` in `.env` (find these via eBay's Account API or Seller Hub). This is an eBay-side requirement, not something this app can automate. If they're missing, the app surfaces eBay's own error message.
-
-### 2. Mobile app
-
-```
-cd mobile
-npm install
+```bash
+firebase use --add && firebase functions:secrets:set EBAY_CLIENT_ID   # …and the other secrets
+firebase deploy --only functions,firestore,storage,hosting
+cd mobile && cp .env.example .env.local   # EXPO_PUBLIC_API_URL, EXPO_PUBLIC_FIREBASE_API_KEY
 npx expo start
 ```
 
-Open it in **Expo Go** on your phone (scan the QR code) — make sure your phone is on the same Wi-Fi network as the machine running the server, since the app auto-detects the dev machine's LAN IP from the Expo dev server connection (see `mobile/src/api/config.js`). If you're using an Android emulator or iOS simulator on the same machine as the server, that also works out of the box.
+Tests: `cd functions && npm test` (runs against the Firebase emulators).
 
-### Try it without any API keys
+Brand assets are generated by `mobile/scripts/generate-brand-assets.py` (icon, adaptive icon, splash, favicon, Play feature graphic in `mobile/assets/store/`).
 
-The app runs fine with zero marketplace keys configured:
-- **Search** will show "Skipped: eBay, Etsy" with the reason (not configured) and an empty result list.
-- **Sell → Publish** will let you pick any marketplace and will report an honest status for each (`not configured`, `not available`, etc.) rather than pretending it worked.
+## License
 
-Add `ETSY_API_KEY` and/or eBay credentials to `.env` and restart the server to see real search results flow in.
-
-## Data storage
-
-The server uses a small JSON-file store (`server/data/*.json`, gitignored) — enough for an MVP with no native build dependencies. Swap in Postgres/Prisma before this goes anywhere near production or multiple concurrent users.
+Proprietary. Copyright (c) 2026 Diddlerrr. All rights reserved. See [LICENSE](LICENSE).

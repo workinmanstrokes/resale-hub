@@ -7,16 +7,17 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { api } from '../api/client';
+import { colors } from '../theme';
 
 export default function SearchScreen({ navigation }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [results, setResults] = useState([]);
-  const [skipped, setSkipped] = useState([]);
-  const [searched, setSearched] = useState(false);
+    const [searched, setSearched] = useState(false);
 
   const runSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -25,7 +26,6 @@ export default function SearchScreen({ navigation }) {
     try {
       const data = await api.search(query.trim());
       setResults(data.results);
-      setSkipped(data.skipped || []);
       setSearched(true);
     } catch (err) {
       setError(err.message);
@@ -54,10 +54,7 @@ export default function SearchScreen({ navigation }) {
       {error && <Text style={styles.error}>{error}</Text>}
 
       {!loading && searched && results.length === 0 && !error && (
-        <Text style={styles.empty}>
-          No results. This usually means no marketplace API keys are configured on the
-          server yet — check the "Sources" note below.
-        </Text>
+        <Text style={styles.empty}>No results. Try a broader search.</Text>
       )}
 
       <FlatList
@@ -69,18 +66,23 @@ export default function SearchScreen({ navigation }) {
             style={styles.card}
             onPress={() => navigation.navigate('ItemDetail', { results, selectedIndex: index })}
           >
+            {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.thumb} /> : null}
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle} numberOfLines={2}>
                 {item.title}
               </Text>
-              <Text style={styles.cardSource}>{item.marketplace.toUpperCase()} · {item.condition}</Text>
+              <Text style={styles.cardSource}>
+                {item.marketplace === 'ebay' ? 'eBay' : 'Etsy'}
+                {item.condition !== 'unknown' ? ` · ${item.condition}` : ''}
+              </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               {item.bestDeal && <Text style={styles.bestDeal}>BEST DEAL</Text>}
               <Text style={styles.price}>${item.totalPrice.toFixed(2)}</Text>
               {item.shippingPrice > 0 && (
-                <Text style={styles.shipping}>+${item.shippingPrice.toFixed(2)} ship incl.</Text>
+                <Text style={styles.shipping}>incl. ${item.shippingPrice.toFixed(2)} shipping</Text>
               )}
+              {item.shippingPrice === 0 && item.shippingKnown && <Text style={styles.shipping}>Free shipping</Text>}
             </View>
           </Pressable>
         )}
@@ -88,10 +90,13 @@ export default function SearchScreen({ navigation }) {
 
       {searched && (
         <Text style={styles.sourcesNote}>
-          Searched: {results.length ? [...new Set(results.map((r) => r.marketplace))].join(', ') : 'none configured'}
-          {skipped.length > 0 && `  ·  Skipped: ${skipped.map((s) => s.label).join(', ')}`}
+          Searched: {results.length ? [...new Set(results.map((r) => (r.marketplace === 'ebay' ? 'eBay' : 'Etsy')))].join(', ') : 'eBay, Etsy'}
         </Text>
       )}
+      <Text style={styles.attribution}>
+        The term "Etsy" is a trademark of Etsy, Inc. This application uses the Etsy API but is not
+        endorsed or certified by Etsy, Inc.
+      </Text>
     </View>
   );
 }
@@ -108,7 +113,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingHorizontal: 16,
     justifyContent: 'center',
@@ -126,8 +131,10 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontWeight: '600', fontSize: 15 },
   cardSource: { color: '#64748b', marginTop: 4, fontSize: 12 },
-  bestDeal: { color: '#16a34a', fontWeight: '700', fontSize: 11, marginBottom: 2 },
+  bestDeal: { color: colors.success, fontWeight: '700', fontSize: 11, marginBottom: 2 },
   price: { fontWeight: '700', fontSize: 16 },
   shipping: { color: '#64748b', fontSize: 11 },
   sourcesNote: { color: '#94a3b8', fontSize: 11, marginTop: 8 },
+  attribution: { color: '#94a3b8', fontSize: 10, marginTop: 6, lineHeight: 14 },
+  thumb: { width: 56, height: 56, borderRadius: 8, marginRight: 10, backgroundColor: '#f1f5f9' },
 });
