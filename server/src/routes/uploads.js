@@ -1,27 +1,17 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const crypto = require('crypto');
 const fs = require('fs');
 const { requireAuth } = require('../middleware/auth');
+const { generateUploadFilename } = require('../utils/uploadFilename');
 
 const UPLOAD_DIR = path.join(__dirname, '..', '..', 'data', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const EXT_BY_MIME = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/webp': '.webp',
-  'image/heic': '.heic',
-  'image/heif': '.heif',
-  'image/gif': '.gif',
-};
-
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
-    const ext = EXT_BY_MIME[file.mimetype] || path.extname(file.originalname) || '.jpg';
-    cb(null, `${crypto.randomUUID()}${ext}`);
+    cb(null, generateUploadFilename(file.mimetype, file.originalname));
   },
 });
 
