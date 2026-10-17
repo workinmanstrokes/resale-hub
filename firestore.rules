@@ -1,14 +1,22 @@
 rules_version = '2';
 
-// All writes go through the API (Admin SDK on a free serverless host), which validates input
-// and applies per-user rate limits. Clients may only read their own data, and can
-// never read eBay OAuth tokens, rate-limit counters or OAuth state.
+// Resale Hub Firestore rules (Spark plan, project resale-hub-6a648).
+//
+// The API (Firebase Admin SDK on Vercel) bypasses these rules and does all the
+// marketplace work. These rules govern direct client access:
+//  - users/{uid}:              owner may read; the eBay connection state is written
+//                              only by the server (after OAuth), so clients can't fake it.
+//  - users/{uid}/private/*:    eBay OAuth tokens. Never readable or writable by clients.
+//  - listings/{id}:            owner-only read/write, with validated fields. Clients can
+//                              never set or change publishing state (targets) or ownership.
+//  - everything else:          denied (rateLimits, oauthStates, unknown collections).
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
 
     match /users/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
+      allow read: if isOwner(uid);
       allow write: if false;
 
       match /private/{doc} {
@@ -16,16 +24,49 @@ service cloud.firestore {
       }
     }
 
+    // ---- listings ------------------------------------------------------------
+    function optionalString(d, k, max) {
+      return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max);
+    }
+    function validPhotos(d) {
+      return !('photos' in d) || (d.photos is list && d.photos.size() <= 12);
+    }
+    function validThumbnail(d) {
+      return !('thumbnail' in d) || d.thumbnail == null
+        || (d.thumbnail is string && d.thumbnail.size() <= 60000
+            && d.thumbnail.matches('data:image/(jpeg|png|webp);base64,.*'));
+    }
+    function validListing(d) {
+      return d.keys().hasOnly(['userId', 'title', 'description', 'price', 'condition',
+                               'category', 'ebayCategoryId', 'ebayCategoryName', 'photos',
+                               'thumbnail', 'targets', 'createdAt', 'updatedAt'])
+        && d.userId == request.auth.uid
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 80
+        && (d.price is int || d.price is float) && d.price > 0 && d.price <= 1000000
+        && (!('condition' in d) || d.condition in ['new', 'used', 'refurbished'])
+        && optionalString(d, 'description', 4000)
+        && optionalString(d, 'category', 100)
+        && (!('ebayCategoryId' in d) || d.ebayCategoryId == null
+            || (d.ebayCategoryId is string && d.ebayCategoryId.matches('[0-9]{1,10}')))
+        && optionalString(d, 'ebayCategoryName', 300)
+        && validPhotos(d)
+        && validThumbnail(d);
+    }
+
     match /listings/{listingId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow write: if false;
+      allow create: if signedIn()
+        && validListing(request.resource.data)
+        && (!('targets' in request.resource.data) || request.resource.data.targets == {});
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && validListing(request.resource.data)
+        && request.resource.data.get('targets', {}) == resource.data.get('targets', {});
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
     }
 
-    match /rateLimits/{id} {
-      allow read, write: if false;
-    }
-
-    match /oauthStates/{id} {
+    // Server-only bookkeeping and anything not listed above.
+    match /{document=**} {
       allow read, write: if false;
     }
   }

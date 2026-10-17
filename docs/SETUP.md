@@ -45,10 +45,17 @@ eas login
 6. **Service account key for the API**: ⚙ Project settings → **Service accounts** →
    **Generate new private key**. Keep the downloaded JSON private; it goes into Vercel as
    `FIREBASE_SERVICE_ACCOUNT` in step 3 and nowhere else (never commit it).
-7. Deploy rules + pages (Spark-safe, no functions/storage in `firebase.json`):
+7. Deploy rules, the Email/Password provider and pages (no functions/storage in `firebase.json`):
    ```bash
-   firebase deploy --only firestore,hosting
+   firebase deploy --only firestore,auth,hosting --project resale-hub-6a648
    ```
+   `firestore.rules`: owner-only reads; listings are owner-writable with validated fields
+   (never ownership or publish state); user/eBay-token/bookkeeping docs are server-only.
+   Tests: `backend/test/rules.test.js`.
+
+Web app config (public, already in `mobile/src/api/config.js`): apiKey
+`AIzaSyDegPUHseJPcMbeaxOfIQuTUDnosjsGkvY`, appId `1:613695085581:web:82a994dd5d2ca61af40944`,
+authDomain `resale-hub-6a648.firebaseapp.com`, messagingSenderId `613695085581`.
    Pages: `https://resale-hub-6a648.web.app/privacy`, `/support`, `/delete-account`.
 
 ## 2. eBay developer setup

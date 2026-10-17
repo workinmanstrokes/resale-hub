@@ -9,8 +9,21 @@ function trimSlash(url) {
 // The API on its free serverless host, e.g. https://resale-hub-api.vercel.app/api
 export const API_BASE_URL = trimSlash(process.env.EXPO_PUBLIC_API_URL);
 
-// Firebase Web API key (Project settings > General). Used for Firebase Auth sign-in.
-export const FIREBASE_API_KEY = (process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '').trim();
+// Public Firebase web app config for project resale-hub-6a648 (web app "Resale Hub").
+// These identifiers are not secrets: access is enforced by Firebase Auth and
+// firestore.rules. EXPO_PUBLIC_* env vars override them (e.g. for another project).
+export const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDegPUHseJPcMbeaxOfIQuTUDnosjsGkvY',
+  authDomain: 'resale-hub-6a648.firebaseapp.com',
+  projectId: 'resale-hub-6a648',
+  storageBucket: 'resale-hub-6a648.firebasestorage.app', // unused: no Storage on the free plan
+  messagingSenderId: '613695085581',
+  appId: '1:613695085581:web:82a994dd5d2ca61af40944',
+};
+
+// Used for Firebase Auth sign-in (Identity Toolkit REST API).
+export const FIREBASE_API_KEY =
+  (process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '').trim() || FIREBASE_CONFIG.apiKey;
 
 // Optional: "127.0.0.1:9099" to use the Auth emulator during local development.
 export const FIREBASE_AUTH_EMULATOR_HOST = (process.env.EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST || '').trim();

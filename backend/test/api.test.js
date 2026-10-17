@@ -260,7 +260,7 @@ test('full flow: account, eBay connect, eBay-hosted photos, listings, publish, r
     headers: { Authorization: `Bearer ${a.idToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields: { price: { doubleValue: 1 } } }),
   });
-  assert.equal(write.status, 403, 'clients cannot write directly');
+  assert.equal(write.status, 403, 'a partial client write that drops required fields is refused');
 
   // eBay Marketplace Account Deletion: challenge + notification
   const ch = await (await call('/ebay/account-deletion?challenge_code=abc')).json();

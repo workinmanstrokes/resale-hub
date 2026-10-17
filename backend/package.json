@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "firebase emulators:exec --only firestore,auth --project demo-resale-hub \"node --test test/unit.test.js test/api.test.js\"",
+    "test": "firebase emulators:exec --only firestore,auth --project demo-resale-hub \"node --test test/unit.test.js test/rules.test.js test/api.test.js\"",
     "test:unit": "node --test test/unit.test.js"
   },
   "dependencies": {
