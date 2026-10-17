@@ -281,7 +281,7 @@ function DeleteAccount() {
   function confirm() {
     Alert.alert(
       'Delete your account?',
-      'This permanently deletes your account, all your listings and photos, and your eBay connection. Items already live on eBay stay on eBay. This cannot be undone.',
+      'This permanently deletes your account, all your listings and photo previews, and your eBay connection. Items already live on eBay stay on eBay. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

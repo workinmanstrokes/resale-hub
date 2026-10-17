@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
 import { api } from '../api/client';
+import { prepareForUpload, makeThumbnail } from '../api/photos';
 import { colors } from '../theme';
 
 const CONDITIONS = ['new', 'used', 'refurbished'];
@@ -47,15 +48,39 @@ export default function ListingForm({ initial = {}, submitLabel, onSubmit, foote
     setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
+  // Photos are shrunk on the phone, then the API hands them to eBay Picture Services
+  // (free, under the user's own eBay account) and returns an https eBay picture URL.
   async function uploadAsset(asset) {
     const id = Crypto.randomUUID();
-    setPhotos((prev) => [...prev, { id, uri: asset.uri, mimeType: asset.mimeType, url: null, uploading: true, error: null }]);
+    setPhotos((prev) => [
+      ...prev,
+      { id, uri: asset.uri, localUri: asset.uri, asset, url: null, uploading: true, error: null },
+    ]);
     try {
-      const { url } = await api.uploadPhoto(asset);
+      const prepared = await prepareForUpload(asset).catch(() => asset);
+      const { url } = await api.uploadPhoto(prepared);
       updatePhoto(id, { url, uploading: false });
     } catch (err) {
       updatePhoto(id, { uploading: false, error: err.message });
+      if (err.code === 'not_connected') {
+        Alert.alert('Connect eBay to add photos', err.message);
+      }
     }
+  }
+
+  // Small preview stored with the listing. Only made from a photo picked on this
+  // device; otherwise keep the existing one if the first photo didn't change.
+  async function thumbnailFor(list) {
+    const first = list.find((p) => p.url);
+    if (!first) return null;
+    if (first.localUri) {
+      try {
+        return await makeThumbnail(first.localUri);
+      } catch {
+        return null;
+      }
+    }
+    return first.url === initial.photos?.[0] ? initial.thumbnail || null : null;
   }
 
   async function pickFromLibrary() {
@@ -114,7 +139,7 @@ export default function ListingForm({ initial = {}, submitLabel, onSubmit, foote
 
   function retryUpload(photo) {
     removePhoto(photo.id);
-    uploadAsset({ uri: photo.uri, mimeType: photo.mimeType });
+    uploadAsset(photo.asset || { uri: photo.uri });
   }
 
   async function findEbayCategory() {
@@ -151,6 +176,7 @@ export default function ListingForm({ initial = {}, submitLabel, onSubmit, foote
         ebayCategoryId: ebayCategory?.id || null,
         ebayCategoryName: ebayCategory?.name || null,
         photos: photos.filter((p) => p.url).map((p) => p.url),
+        thumbnail: await thumbnailFor(photos),
       });
     } catch (err) {
       Alert.alert('Could not save listing', err.message);
@@ -281,8 +307,8 @@ export default function ListingForm({ initial = {}, submitLabel, onSubmit, foote
         </Pressable>
       </View>
       <Text style={styles.hint}>
-        Photos you add are stored in your Resale Hub account and shared with the marketplaces you
-        publish to. eBay needs at least one photo.
+        Photos are hosted for free by eBay through your connected eBay account (connect it on the
+        Account tab first). eBay needs at least one photo.
       </Text>
 
       <Pressable

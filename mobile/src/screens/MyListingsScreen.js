@@ -57,7 +57,9 @@ export default function MyListingsScreen({ navigation }) {
           onLongPress={() => confirmDeleteListing(item, load)}
         >
           <View style={styles.cardTop}>
-            {item.photos?.[0] ? <Image source={{ uri: item.photos[0] }} style={styles.thumb} /> : null}
+            {item.thumbnail || item.photos?.[0] ? (
+              <Image source={{ uri: item.thumbnail || item.photos[0] }} style={styles.thumb} />
+            ) : null}
             <View style={{ flex: 1 }}>
               <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
               <Text style={styles.meta}>

@@ -1,4 +1,4 @@
-const { db, auth, bucket, FieldValue } = require('./firebase');
+const { db, auth, FieldValue } = require('./firebase');
 
 const userRef = (uid) => db.collection('users').doc(uid);
 
@@ -43,13 +43,15 @@ async function deleteQueryInBatches(query) {
 }
 
 // Account deletion (App Store guideline 5.1.1(v) / Google Play account-deletion policy):
-// removes listings, eBay tokens/settings, pending OAuth states, every uploaded photo,
-// and finally the Firebase Auth record.
+// removes listings (with their thumbnails), eBay tokens/settings, pending OAuth states
+// and rate-limit counters, then the Firebase Auth record. There is no file storage to
+// clean: listing photos are hosted by eBay Picture Services under the seller's own eBay
+// account (live listings keep them; unused ones expire automatically).
 async function deleteAccount(uid) {
   const listings = await deleteQueryInBatches(db.collection('listings').where('userId', '==', uid));
   await deleteQueryInBatches(db.collection('oauthStates').where('uid', '==', uid));
   await db.recursiveDelete(userRef(uid)); // user doc + private/ebay tokens
-  await bucket().deleteFiles({ prefix: `users/${uid}/`, force: true });
+  await deleteQueryInBatches(db.collection('rateLimits').where('who', '==', `u:${uid}`));
   try {
     await auth.deleteUser(uid);
   } catch (err) {

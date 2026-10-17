@@ -9,6 +9,11 @@
 //       https://developer.ebay.com/api-docs/commerce/taxonomy/overview.html
 //       https://developer.ebay.com/api-docs/sell/inventory/overview.html
 //       https://developer.ebay.com/api-docs/sell/account/overview.html
+//       https://developer.ebay.com/api-docs/commerce/media/overview.html (photo hosting)
+//
+//  - Photos: Media API createImageFromFile uploads each photo to eBay Picture Services
+//    (EPS) with the seller's token. EPS hosting is free, so the app needs no Firebase
+//    Storage bucket (which would require the Blaze plan).
 const { env } = require('../lib/secrets');
 
 const MARKETPLACE_ID = 'EBAY_US';
@@ -22,13 +27,18 @@ const USER_SCOPES = [
 
 function cfg() {
   const sandbox = (process.env.EBAY_ENV || 'production').toLowerCase() === 'sandbox';
+  const host = (name) => `https://${name}${sandbox ? '.sandbox' : ''}.ebay.com`;
+  // Tests point every eBay host at a local fake server. Never set this in production.
+  const override = (process.env.EBAY_BASE_URL_OVERRIDE || '').replace(/\/+$/, '');
+  const pick = (name) => override || host(name);
   return {
     sandbox,
     environment: sandbox ? 'sandbox' : 'production',
-    api: sandbox ? 'https://api.sandbox.ebay.com' : 'https://api.ebay.com',
-    apiz: sandbox ? 'https://apiz.sandbox.ebay.com' : 'https://apiz.ebay.com',
-    auth: sandbox ? 'https://auth.sandbox.ebay.com' : 'https://auth.ebay.com',
-    web: sandbox ? 'https://www.sandbox.ebay.com' : 'https://www.ebay.com',
+    api: pick('api'),
+    apiz: pick('apiz'),
+    apim: pick('apim'),
+    auth: pick('auth'),
+    web: override || host('www'),
     clientId: env('EBAY_CLIENT_ID'),
     clientSecret: env('EBAY_CLIENT_SECRET'),
     ruName: env('EBAY_RUNAME'),
@@ -47,6 +57,7 @@ function canConnect() {
 class EbayError extends Error {
   constructor(message, status, body) {
     super(message);
+    this.name = 'EbayError';
     this.status = status;
     this.body = body;
   }
@@ -69,9 +80,9 @@ function describeEbayError(text) {
   }
 }
 
-async function ebayFetch(path, { method = 'GET', token, body, headers = {}, okStatuses = [] } = {}) {
+async function ebayFetch(path, { method = 'GET', token, body, headers = {}, okStatuses = [], base } = {}) {
   const c = cfg();
-  const res = await fetch(`${c.api}${path}`, {
+  const res = await fetch(`${base || c.api}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -295,6 +306,37 @@ async function createLocation(token, key, { postalCode, country }) {
   });
 }
 
+// ---- Photos (Media API -> eBay Picture Services) -----------------------------------
+// Returns { url, expiresAt }. EPS keeps images used in a live listing; unused ones
+// expire on their own (eBay reports the date), so there is nothing for us to delete.
+async function uploadImage(token, buffer, { mimeType = 'image/jpeg', filename = 'photo.jpg' } = {}) {
+  const form = new FormData();
+  form.append('image', new Blob([buffer], { type: mimeType }), filename);
+  const res = await fetch(`${cfg().apim}/commerce/media/v1_beta/image/create_image_from_file`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form, // fetch sets multipart/form-data with the boundary
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new EbayError(describeEbayError(text) || `eBay photo upload failed (${res.status})`, res.status, text);
+  }
+  let data = safeJson(text) || {};
+  if (!data.imageUrl) {
+    // Some responses only carry the Location header -> getImage for the URL.
+    const location = res.headers.get('location');
+    const imageId = location ? location.split('/').pop() : null;
+    if (!imageId) throw new EbayError('eBay did not return a photo URL', 502, text);
+    ({ data } = await ebayFetch(`/commerce/media/v1_beta/image/${encodeURIComponent(imageId)}`, {
+      token,
+      base: cfg().apim,
+    }));
+  }
+  const url = data.imageUrl || data.maxDimensionImageUrl;
+  if (!/^https:\/\//.test(url || '')) throw new EbayError('eBay did not return a photo URL', 502, text);
+  return { url, expiresAt: data.expirationDate || null };
+}
+
 // ---- Publish -----------------------------------------------------------------------
 // Inventory API condition enums (https://developer.ebay.com/api-docs/sell/inventory/types/slr:ConditionEnum)
 const CONDITION_ENUM = {
@@ -417,6 +459,7 @@ module.exports = {
   chooseDefaults,
   missingSettings,
   createLocation,
+  uploadImage,
   publish,
   endListing,
   skuFor,

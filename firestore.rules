@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// All writes go through the API (Cloud Functions, Admin SDK), which validates input
+// All writes go through the API (Admin SDK on a free serverless host), which validates input
 // and applies per-user rate limits. Clients may only read their own data, and can
 // never read eBay OAuth tokens, rate-limit counters or OAuth state.
 service cloud.firestore {

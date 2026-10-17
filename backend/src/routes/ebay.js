@@ -24,6 +24,18 @@ function page(title, message) {
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:32px;text-align:center"><h2>${esc(title)}</h2><p>${esc(message)}</p></body></html>`;
 }
 
+// Abandoned sign-ins leave state docs behind. Firestore TTL deletes need billing, so
+// clean this user's expired ones up ourselves (single-field query, no index needed).
+async function deleteExpiredStates(uid) {
+  const snap = await db.collection('oauthStates').where('uid', '==', uid).limit(50).get();
+  const now = Date.now();
+  const stale = snap.docs.filter((d) => (d.data().expiresAt?.toMillis?.() || 0) < now);
+  if (!stale.length) return;
+  const batch = db.batch();
+  stale.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
 async function currentUser(req) {
   const data = await ensureUser(req.uid, req.userEmail);
   return publicUser(req.uid, data);
@@ -38,6 +50,7 @@ router.post(
     if (!ebay.canConnect()) throw new HttpError(503, 'eBay is not configured on the server yet.');
     const returnUrl = String(req.body?.returnUrl || '');
     if (returnUrl && !RETURN_URL.test(returnUrl)) throw new HttpError(400, 'Invalid returnUrl');
+    await deleteExpiredStates(req.uid);
     const state = crypto.randomBytes(24).toString('hex');
     await db.collection('oauthStates').doc(state).set({
       uid: req.uid,
