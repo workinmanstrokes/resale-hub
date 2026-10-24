@@ -13,3 +13,20 @@ footer { border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; color
 nav a { margin: 0 8px; }
 table { border-collapse: collapse; width: 100%; font-size: 15px; }
 td, th { border: 1px solid #e2e8f0; padding: 8px; text-align: left; vertical-align: top; }
+
+/* landing polish */
+header{display:flex;align-items:center;padding:calc(16px + env(safe-area-inset-top)) 20px 16px}
+.brand{display:flex;align-items:center;gap:12px}.brand img{border-radius:10px;box-shadow:0 0 0 2px #ffffff40}.brand span{display:flex;flex-direction:column;line-height:1.15}.brand small{font-weight:500;font-size:13px;opacity:.85}
+body{background:#f8fafc}
+.hero{display:grid;gap:28px;align-items:center;padding:12px 0 8px}@media(min-width:760px){.hero{grid-template-columns:1.1fr .9fr}}
+.pill{display:inline-block;background:#ccfbf1;color:#115e59;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;margin-bottom:12px}
+.hero h1{font-size:clamp(30px,8vw,44px);line-height:1.1;letter-spacing:-.02em;margin:0 0 12px}.lead{font-size:17px;color:#334155;margin:0}
+.phones{position:relative;height:460px;overflow:hidden;display:flex;justify-content:center}
+.phone{margin:0;width:200px;height:430px;border-radius:30px;padding:8px;background:#0f172a;box-shadow:0 24px 50px #0f172a40;position:relative;z-index:2}.phone img{display:block;width:100%;height:100%;object-fit:cover;object-position:top;border-radius:22px}
+.phone.back{position:absolute;left:calc(50% - 30px);top:30px;transform:rotate(6deg);z-index:1;opacity:.95}.phone:not(.back){transform:translateX(-50px) rotate(-3deg)}
+.features{display:grid;gap:12px;margin:28px 0}@media(min-width:640px){.features{grid-template-columns:repeat(3,1fr)}}
+.feat{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px}.feat svg{width:36px;height:36px;padding:7px;border-radius:10px;background:#f0fdfa;fill:none;stroke:#0f766e;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.feat h2{font-size:17px;margin:12px 0 4px}.feat p{margin:0;color:#64748b;font-size:15px}
+.links{display:grid;gap:10px}.lc{display:flex;flex-direction:column;min-height:64px;justify-content:center;padding:12px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;text-decoration:none;position:relative}.lc::after{content:"›";position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:24px;color:#94a3b8}
+.lc b{color:#0f172a}.lc span{color:#64748b;font-size:14px}.contact{margin-top:24px;color:#64748b}
+footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}footer nav a{display:inline-flex;align-items:center;min-height:48px;padding:0 10px;margin:0}

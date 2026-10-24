@@ -123,13 +123,13 @@ function SignInForm() {
           <Text style={styles.buttonText}>{mode === 'login' ? 'Sign in' : 'Create account'}</Text>
         )}
       </Pressable>
-      <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
+      <Pressable style={styles.linkTap} onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
         <Text style={styles.switchText}>
           {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
         </Text>
       </Pressable>
       {mode === 'login' && (
-        <Pressable onPress={handleReset}>
+        <Pressable style={styles.linkTap} onPress={handleReset}>
           <Text style={styles.switchText}>Forgot password?</Text>
         </Pressable>
       )}
@@ -349,18 +349,20 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16, backgroundColor: colors.surface },
   heading: { fontSize: 18, fontWeight: '700', marginBottom: 12, color: colors.text },
   body: { color: colors.muted, marginBottom: 16, lineHeight: 19 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    fontSize: 16,
+    backgroundColor: '#fff',
     marginBottom: 12,
   },
-  button: { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 8 },
+  button: { backgroundColor: colors.primary, borderRadius: 12, minHeight: 52, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   buttonText: { color: '#fff', fontWeight: '700' },
   switchText: { color: colors.primary, textAlign: 'center', marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginBottom: 16 },
@@ -374,25 +376,27 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff', fontWeight: '600' },
   warn: { color: '#B45309', fontSize: 12, marginTop: 4, lineHeight: 17 },
   locationRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 4 },
-  smallButton: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  smallButton: { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 14, minHeight: 48, justifyContent: 'center' },
   smallButtonText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   cardButtons: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   secondaryButton: {
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 8,
+    borderRadius: 12,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: 14,
     alignItems: 'center',
   },
   secondaryButtonText: { color: colors.primary, fontWeight: '700' },
-  dangerOutline: { marginTop: 12, borderWidth: 1, borderColor: colors.danger, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  dangerOutline: { marginTop: 12, borderWidth: 1, borderColor: colors.danger, borderRadius: 12, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
   dangerText: { color: colors.danger, fontWeight: '700' },
   dangerBox: { marginTop: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.danger },
-  dangerButton: { backgroundColor: colors.danger, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  dangerButton: { backgroundColor: colors.danger, borderRadius: 12, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
   about: { marginTop: 24 },
   linkRow: { flexDirection: 'row', gap: 18, justifyContent: 'center', marginBottom: 10 },
   link: { color: colors.primary, fontWeight: '600' },
+  linkTap: { minHeight: 48, justifyContent: 'center' },
   inlineLink: { color: colors.primary, fontWeight: '600' },
   legal: { color: colors.subtle, fontSize: 11, textAlign: 'center', lineHeight: 16 },
   legalSmall: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 14, lineHeight: 17 },
