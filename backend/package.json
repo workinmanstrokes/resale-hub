@@ -1,0 +1,22 @@
+{
+  "name": "resale-hub-api",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Resale Hub API: one Express app for free serverless hosts (Vercel, Cloudflare Workers, or any Node host). Data lives in Firestore on the Firebase Spark (free) plan.",
+  "main": "src/app.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "firebase emulators:exec --only firestore,auth --project demo-resale-hub \"node --test test/unit.test.js test/rules.test.js test/api.test.js\"",
+    "test:unit": "node --test test/unit.test.js"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.4.0"
+  }
+}

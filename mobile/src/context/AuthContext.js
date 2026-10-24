@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  // Re-checks the password, then deletes listings, photos, eBay link and the account.
+  // Re-checks the password, then deletes listings (and previews), eBay link and the account.
   const deleteAccount = useCallback(async (password) => {
     await fbAuth.reauthenticate(password);
     await api.deleteAccount();

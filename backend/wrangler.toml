@@ -1,0 +1,9 @@
+# Cloudflare Workers (free plan) alternative to Vercel - experimental, see
+# docs/FREE_HOSTING.md. Secrets are added with `wrangler secret put NAME`, never here.
+name = "resale-hub-api"
+main = "worker/index.js"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+EBAY_ENV = "production"

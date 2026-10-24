@@ -5,7 +5,6 @@ const { requireAuth } = require('../middleware/auth');
 const { limits } = require('../middleware/rateLimit');
 const { db, FieldValue } = require('../lib/firebase');
 const { HttpError, wrap } = require('../lib/errors');
-const { deleteOwnedPhotos } = require('../lib/photos');
 const ebayAccount = require('../lib/ebayAccount');
 
 const router = express.Router();
@@ -13,6 +12,9 @@ router.use(requireAuth, limits.general);
 
 const CONDITIONS = ['new', 'used', 'refurbished'];
 const MAX_PHOTOS = 12;
+// Small JPEG preview made on the device (about 240 px). Stored on the listing so My
+// Listings can show it even after an unused eBay-hosted photo expires.
+const MAX_THUMBNAIL_CHARS = 60_000;
 const col = () => db.collection('listings');
 
 function iso(v) {
@@ -32,6 +34,7 @@ function serialize(id, d) {
     ebayCategoryId: d.ebayCategoryId || null,
     ebayCategoryName: d.ebayCategoryName || null,
     photos: d.photos || [],
+    thumbnail: d.thumbnail || null,
     createdAt: iso(d.createdAt),
     updatedAt: iso(d.updatedAt),
     targets: Object.entries(d.targets || {}).map(([marketplace, t]) => ({
@@ -85,6 +88,13 @@ function clean(body = {}, { partial }) {
       }
     }
     out.photos = photos;
+  }
+  if (!partial || has('thumbnail')) {
+    const t = body.thumbnail == null ? '' : String(body.thumbnail);
+    if (t && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t) || t.length > MAX_THUMBNAIL_CHARS)) {
+      throw new HttpError(400, 'Thumbnail must be a small base64 JPEG/PNG/WebP data URL');
+    }
+    out.thumbnail = t || null;
   }
   return out;
 }
@@ -142,10 +152,6 @@ router.patch(
       if (t.status === 'published') update[`targets.${key}.outOfDate`] = true;
     }
     await snap.ref.update(update);
-    if (patch.photos) {
-      const removed = (before.photos || []).filter((u) => !patch.photos.includes(u));
-      await deleteOwnedPhotos(removed, req.uid);
-    }
     const after = await snap.ref.get();
     res.json(serialize(after.id, after.data()));
   })
@@ -170,8 +176,8 @@ router.delete(
       }
     }
 
+    // Photos are hosted by eBay (EPS), not by us: unused ones expire on eBay's side.
     await snap.ref.delete();
-    await deleteOwnedPhotos(listing.photos, req.uid);
     res.json(result);
   })
 );

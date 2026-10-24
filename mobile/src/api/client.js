@@ -45,8 +45,9 @@ async function uploadPhoto(asset) {
   if (!API_BASE_URL) throw new Error('This build is missing EXPO_PUBLIC_API_URL.');
   const headers = await authHeader(true);
   // expo-file-system's native multipart upload (Expo's fetch/FormData rejects RN's
-  // {uri,name,type} file shorthand). The API stores the file in Firebase Storage
-  // and returns a public https download URL that eBay can fetch.
+  // {uri,name,type} file shorthand). The API passes the photo to eBay Picture Services
+  // with the user's eBay token and returns the https eBay picture URL (no Firebase
+  // Storage, which would need the paid Blaze plan). Needs eBay connected (409 if not).
   let result;
   try {
     const file = new File(asset.uri);
@@ -66,9 +67,12 @@ async function uploadPhoto(asset) {
     // non-JSON error body
   }
   if (result.status < 200 || result.status >= 300) {
-    throw new Error(data?.error || `Upload failed (${result.status})`);
+    const err = new Error(data?.error || `Upload failed (${result.status})`);
+    err.status = result.status;
+    err.code = data?.code;
+    throw err;
   }
-  return data; // { url, path }
+  return data; // { url, expiresAt }
 }
 
 export const api = {

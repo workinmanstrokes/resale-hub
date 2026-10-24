@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacy Policy | Resale Hub</title><link rel="stylesheet" href="/style.css"><link rel="icon" href="/favicon.png"></head><body><header><a href="/">Resale Hub</a><p>by Diddlerrr</p></header><main>
 <h1>Privacy Policy</h1>
-<p class="muted">Effective October 3, 2026</p>
+<p class="muted">Effective October 16, 2026</p>
 <p>This policy explains what information the Resale Hub mobile app and its online service (together, &ldquo;Resale Hub&rdquo;) collect, how it is used, and the choices you have. Resale Hub is developed by <strong>Diddlerrr</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;). Contact: <a href="mailto:mscofield1588@gmail.com">mscofield1588@gmail.com</a>.</p>
 
 <h2>Who Resale Hub is for</h2>
@@ -11,20 +11,21 @@
 <tr><th>Data</th><th>Why</th><th>Where it is stored</th></tr>
 <tr><td><strong>Account:</strong> email address and password</td><td>To sign you in. Passwords are handled by Firebase Authentication and stored only in hashed form; we never see them.</td><td>Google Firebase Authentication</td></tr>
 <tr><td><strong>Listings:</strong> title, description, price, condition, category, chosen eBay category, and publishing status (eBay listing ID and link)</td><td>To save your listings and publish them where you choose</td><td>Google Cloud Firestore</td></tr>
-<tr><td><strong>Photos</strong> you take or pick for a listing</td><td>To show them in your listing and send them to eBay when you publish. Each photo has a private, hard-to-guess link that marketplaces you publish to can read.</td><td>Google Firebase Cloud Storage</td></tr>
+<tr><td><strong>Photos</strong> you take or pick for a listing</td><td>To use them in your eBay listing. The app shrinks each photo on your phone and our server passes it straight to eBay Picture Services under your own connected eBay account, which gives it an eBay picture link. We do not keep a copy. A small preview image (about 240 pixels) is saved with the listing so My Listings can show it.</td><td>eBay Picture Services (photos, via your eBay account); Google Cloud Firestore (small previews)</td></tr>
 <tr><td><strong>eBay connection</strong> (only if you connect eBay): eBay OAuth access and refresh tokens, the names and IDs of your eBay business policies (shipping, payment, returns), your inventory location key and, if you add one in the app, the ZIP/postal code items ship from</td><td>To create listings on your own eBay seller account</td><td>Google Cloud Firestore. Tokens are readable only by our server, never by the app or other users.</td></tr>
 <tr><td><strong>Search terms</strong></td><td>Sent to eBay and Etsy to fetch results. We do not save your search history.</td><td>Not stored (may appear briefly in server logs)</td></tr>
-<tr><td><strong>Technical data:</strong> IP address, request times, error logs, short-lived rate-limit counters</td><td>Security, abuse prevention (rate limiting) and fixing problems</td><td>Google Cloud logging. Counters expire within hours; logs are kept up to 30 days.</td></tr>
+<tr><td><strong>Technical data:</strong> IP address, request times, error logs, short-lived rate-limit counters</td><td>Security, abuse prevention (rate limiting) and fixing problems</td><td>Our API host&rsquo;s logs (Vercel) and Google Cloud Firestore. Counters are overwritten every hour and removed when you delete your account; logs are kept up to 30 days.</td></tr>
 </table>
 <p><strong>Camera and photo library:</strong> the app asks for access only when you add a photo to a listing, and only the photos you choose are uploaded. Resale Hub does not use your microphone, location, or contacts.</p>
 <p><strong>Etsy:</strong> Resale Hub only searches public Etsy listings. It does not connect to or collect anything from your Etsy account.</p>
 
 <h2>How we use information</h2>
-<p>Only to run Resale Hub&rsquo;s features: signing in, saving listings, hosting photos, publishing to eBay when you ask, searching marketplaces, keeping the service secure, and answering support requests. We do <strong>not</strong> sell or rent personal information, show ads, use advertising identifiers, track you across other apps or websites, or use third-party analytics SDKs.</p>
+<p>Only to run Resale Hub&rsquo;s features: signing in, saving listings, sending photos to eBay, publishing to eBay when you ask, searching marketplaces, keeping the service secure, and answering support requests. We do <strong>not</strong> sell or rent personal information, show ads, use advertising identifiers, track you across other apps or websites, or use third-party analytics SDKs.</p>
 
 <h2>Who we share it with</h2>
 <ul>
-<li><strong>Google Firebase / Google Cloud</strong> (Authentication, Cloud Firestore, Cloud Storage, Cloud Functions, Hosting) processes data on our behalf to run the service, in the United States. See <a href="https://firebase.google.com/support/privacy">Firebase privacy information</a>.</li>
+<li><strong>Google Firebase / Google Cloud</strong> (Authentication, Cloud Firestore, Hosting) processes data on our behalf to run the service, in the United States. See <a href="https://firebase.google.com/support/privacy">Firebase privacy information</a>.</li>
+<li><strong>Vercel</strong> runs our API server, which relays requests between the app, Firebase and eBay. It does not store your listings or photos. See <a href="https://vercel.com/legal/privacy-policy">Vercel&rsquo;s privacy policy</a>.</li>
 <li><strong>eBay</strong>, when you connect your account and publish. We send the listing details, photos, price and your selected policies to eBay. Data you send to eBay is governed by <a href="https://www.ebay.com/help/policies/member-behaviour-policies/user-privacy-notice-privacy-policy?id=4260">eBay&rsquo;s privacy notice</a>.</li>
 <li><strong>Etsy</strong> receives the search terms you enter (and our app key) to return public listings. See <a href="https://www.etsy.com/legal/privacy/">Etsy&rsquo;s privacy policy</a>.</li>
 <li>Authorities, if required by law or to protect the rights and safety of our users or others.</li>
@@ -32,9 +33,9 @@
 
 <h2>Retention and deletion</h2>
 <ul>
-<li>Listings and their photos are kept until you delete them. Deleting a listing removes it and its uploaded photos; you can also choose to end the live eBay listing at the same time.</li>
+<li>Listings are kept until you delete them. Deleting a listing removes it and its preview; you can also choose to end the live eBay listing at the same time. Photos hosted by eBay stay with a live eBay listing; eBay deletes photos that aren&rsquo;t used in a listing on its own after its expiry period.</li>
 <li>Disconnecting eBay (Account &rarr; eBay &rarr; Disconnect) deletes your stored eBay tokens and settings.</li>
-<li><strong>Deleting your account</strong> (Account &rarr; Delete account, or see <a href="/delete-account">this page</a>) permanently deletes your account, listings, photos, eBay tokens and settings right away. Items already live on eBay stay on eBay and can be managed in eBay Seller Hub. Residual server logs expire within 30 days.</li>
+<li><strong>Deleting your account</strong> (Account &rarr; Delete account, or see <a href="/delete-account">this page</a>) permanently deletes your account, listings, photo previews, eBay tokens and settings right away. Items already live on eBay stay on eBay and can be managed in eBay Seller Hub. Residual server logs expire within 30 days.</li>
 </ul>
 
 <h2>Your rights and choices</h2>

@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import { api } from '../api/client';
 
-// Asks for confirmation, deletes the listing (and its photos), and, if it is live on
+// Asks for confirmation, deletes the listing (and its photo preview), and, if it is live on
 // eBay, lets the user choose whether to end the eBay listing too.
 export function confirmDeleteListing(listing, onDeleted) {
   const liveOnEbay = (listing.targets || []).some(
@@ -36,7 +36,7 @@ export function confirmDeleteListing(listing, onDeleted) {
 
   Alert.alert(
     'Delete listing?',
-    `"${listing.title}" and its photos will be permanently deleted.${
+    `"${listing.title}" will be permanently deleted from Resale Hub.${
       liveOnEbay ? ' It is also live on eBay.' : ''
     }`,
     buttons

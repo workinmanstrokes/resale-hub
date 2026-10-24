@@ -12,7 +12,7 @@ const uploadsRoutes = require('./routes/uploads');
 
 function createApp() {
   const app = express();
-  app.set('trust proxy', true); // Hosting/Cloud Run front end sets X-Forwarded-For
+  app.set('trust proxy', true); // Vercel / Cloudflare front ends set X-Forwarded-For
   app.disable('x-powered-by');
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
@@ -26,8 +26,8 @@ function createApp() {
   api.use('/ebay', ebayRoutes);
   api.use('/uploads', uploadsRoutes);
 
-  // Reached as https://<project>.web.app/api/... (Hosting rewrite) or directly as
-  // https://<region>-<project>.cloudfunctions.net/api/... (path already stripped).
+  // Served under /api on every host (https://<host>/api/...); also mounted at / so a
+  // host that strips the prefix still works.
   app.use('/api', api);
   app.use('/', api);
 

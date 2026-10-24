@@ -1,8 +1,10 @@
 node_modules/
 .env
 .env.local
-functions/.env
-functions/.secret.local
+backend/.env
+.vercel/
+.wrangler/
+.dev.vars
 .firebaserc
 .firebase/
 firebase-debug.log
