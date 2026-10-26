@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { api } from '../api/client';
 import { colors } from '../theme';
 
@@ -19,12 +20,13 @@ export default function SearchScreen({ navigation }) {
   const [results, setResults] = useState([]);
     const [searched, setSearched] = useState(false);
 
-  const runSearch = useCallback(async () => {
-    if (!query.trim()) return;
+  const runSearch = useCallback(async (override) => {
+    const q = (typeof override === 'string' ? override : query).trim();
+    if (!q) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await api.search(query.trim());
+      const data = await api.search(q);
       setResults(data.results);
       setSearched(true);
     } catch (err) {
@@ -45,12 +47,28 @@ export default function SearchScreen({ navigation }) {
           onSubmitEditing={runSearch}
           returnKeyType="search"
         />
-        <Pressable style={styles.button} onPress={runSearch}>
+        <Pressable style={({ pressed }) => [styles.button, pressed && { opacity: 0.85 }]} onPress={runSearch} accessibilityRole="button">
+          <Ionicons name="search" size={18} color="#fff" />
           <Text style={styles.buttonText}>Search</Text>
         </Pressable>
       </View>
 
-      {loading && <ActivityIndicator style={{ marginTop: 20 }} />}
+      {!searched && !loading && !error && (
+        <View style={styles.intro}>
+          <View style={styles.introIcon}><Ionicons name="pricetags-outline" size={40} color={colors.primary} /></View>
+          <Text style={styles.introTitle}>Find the best deal</Text>
+          <Text style={styles.introText}>We search eBay and Etsy at once and sort by total price, shipping included. The cheapest is flagged.</Text>
+          <Text style={styles.tryLabel}>Try a search</Text>
+          <View style={styles.chips}>
+            {['Nintendo Switch', 'Vintage Levi\'s', 'Pokémon cards', 'KitchenAid mixer'].map((t) => (
+              <Pressable key={t} style={styles.chip} onPress={() => { setQuery(t); runSearch(t); }} accessibilityRole="button">
+                <Text style={styles.chipText}>{t}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+      {loading && <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />}
       {error && <Text style={styles.error}>{error}</Text>}
 
       {!loading && searched && results.length === 0 && !error && (
@@ -102,20 +120,34 @@ export default function SearchScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16, backgroundColor: colors.surface },
+  intro: { alignItems: 'center', marginTop: 40, paddingHorizontal: 12 },
+  introIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primaryTint, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  introTitle: { fontSize: 22, fontWeight: '700', color: colors.text },
+  introText: { color: colors.muted, textAlign: 'center', marginTop: 8, lineHeight: 21, fontSize: 15 },
+  tryLabel: { marginTop: 28, color: colors.subtle, fontWeight: '700', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 10 },
+  chip: { minHeight: 44, paddingHorizontal: 16, borderRadius: 22, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
+  chipText: { color: colors.text, fontWeight: '600' },
   searchRow: { flexDirection: 'row', gap: 8 },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 16,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     justifyContent: 'center',
   },
   buttonText: { color: '#fff', fontWeight: '600' },
@@ -126,7 +158,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.surfaceStrong,
     marginTop: 12,
   },
   cardTitle: { fontWeight: '600', fontSize: 15 },
