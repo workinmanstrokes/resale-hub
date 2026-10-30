@@ -183,7 +183,7 @@ eas submit -p android --profile production
 
 IDs: bundle identifier / package `com.diddlerrr.resalehub`. Store listing: privacy policy
 `https://resale-hub-6a648.web.app/privacy`, support `/support`, Play account-deletion URL
-`/delete-account`, audience 13+. Data collected (Play Data safety / App Store labels): email
+`/delete-account`, audience 18+. Data collected (Play Data safety / App Store labels): email
 (account), photos (user content, sent to eBay), listing content, eBay tokens (linked to the
 user, not used for tracking); no ads, no third-party analytics.
 
