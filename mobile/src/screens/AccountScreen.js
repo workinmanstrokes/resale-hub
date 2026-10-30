@@ -52,7 +52,7 @@ function AboutLinks() {
         <Text style={styles.link} onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}>Contact</Text>
       </View>
       <Text style={styles.legal}>
-        Resale Hub by Diddlerrr · v{Constants.expoConfig?.version || '1.0.0'}. For ages 13+.
+        Resale Hub by Diddlerrr · v{Constants.expoConfig?.version || '1.0.0'}. For ages 18+.
         {'\n'}Not affiliated with, endorsed by, or sponsored by eBay Inc. The term "Etsy" is a
         trademark of Etsy, Inc. This application uses the Etsy API but is not endorsed or certified
         by Etsy, Inc.
