@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Order confirmed — Resale Hub</title>
+<meta name="description" content="Your Resale Hub order confirmation.">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="/favicon.png">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="/"><img src="/favicon.png" alt="" width="36" height="36"><span>Resale Hub<small>by Diddlerrr</small></span></a>
+    <nav>
+      <a href="/">Shop</a>
+      <a class="cart-link" href="/cart.html">Cart <span class="badge" data-cart-count hidden></span></a>
+    </nav>
+  </div>
+</header>
+<main>
+  <p class="notice" id="loading">Confirming your payment…</p>
+  <p class="notice error" id="error" hidden></p>
+  <div id="done" hidden>
+    <h1 id="heading">Thank you — your order is confirmed</h1>
+    <p id="status-line" class="meta"></p>
+    <div class="buybox">
+      <h2>Order summary</h2>
+      <div id="items"></div>
+      <p><strong>Total paid: <span id="total"></span></strong></p>
+      <p class="meta" id="ship-note"></p>
+    </div>
+    <p><a class="btn" href="/">Continue shopping</a></p>
+  </div>
+</main>
+<footer class="site">
+  <div class="foot-in">
+    <nav><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
+    <span>&copy; 2026 Diddlerrr.</span>
+  </div>
+</footer>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+<script>
+(function () {
+  const sessionId = new URLSearchParams(location.search).get('session_id') || '';
+  const loading = document.getElementById('loading');
+  const errorEl = document.getElementById('error');
+  const done = document.getElementById('done');
+
+  if (!sessionId) {
+    loading.hidden = true;
+    RH.showError(errorEl, new Error('No order to confirm. If you just paid, your receipt email from Stripe confirms the order.'));
+    return;
+  }
+
+  let tries = 0;
+  function check() {
+    tries += 1;
+    RH.api('/storefront/order/' + encodeURIComponent(sessionId))
+      .then((order) => {
+        if (order.status === 'pending' && tries < 5) {
+          // The webhook may still be finalizing it — wait and retry.
+          setTimeout(check, 2000);
+          return;
+        }
+        loading.hidden = true;
+        done.hidden = false;
+        RH.clearCart();
+        if (order.status === 'paid' || order.status === 'fulfilled') {
+          document.getElementById('heading').textContent = 'Thank you — your order is confirmed';
+          document.getElementById('status-line').textContent =
+            'A receipt was sent to ' + (order.buyerEmail || 'your email') + ' by Stripe.';
+        } else {
+          document.getElementById('heading').textContent = 'Your order is ' + order.status;
+          document.getElementById('status-line').textContent =
+            'If you were charged and this does not update, email the shop with this page open.';
+        }
+        document.getElementById('items').innerHTML = (order.items || []).map((l) =>
+          '<p>' + RH.esc(l.title) + ' × ' + l.qty + ' — ' + RH.esc(RH.moneyCents(l.priceCents * l.qty)) + '</p>').join('');
+        document.getElementById('total').textContent = RH.moneyCents(order.totalCents);
+        document.getElementById('ship-note').textContent =
+          order.shippingStatus === 'prepaid'
+            ? 'Shipping is included. The seller will ship to the address you entered at checkout.'
+            : 'Shipping is arranged by the seller — they will contact you about delivery.';
+      })
+      .catch((err) => {
+        loading.hidden = true;
+        RH.showError(errorEl, err);
+      });
+  }
+  check();
+})();
+</script>
+</body>
+</html>

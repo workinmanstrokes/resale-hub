@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Seller orders — Resale Hub</title>
+<meta name="description" content="Seller order view for Resale Hub.">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="/favicon.png">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="/"><img src="/favicon.png" alt="" width="36" height="36"><span>Resale Hub<small>by Diddlerrr</small></span></a>
+    <nav><a href="/">Shop</a></nav>
+  </div>
+</header>
+<main>
+  <h1>Seller orders</h1>
+  <p class="meta">Sign in with the same account you use in the Resale Hub app. Only the shop owner can see orders.</p>
+  <p class="notice error" id="error" hidden></p>
+  <p class="notice" id="setup-note" hidden></p>
+
+  <div id="signin" class="buybox">
+    <div class="field"><label for="email">Email</label><input type="email" id="email" autocomplete="email"></div>
+    <div class="field"><label for="password">Password</label><input type="password" id="password" autocomplete="current-password"></div>
+    <button class="btn" id="sign-in-btn" type="button">Sign in</button>
+  </div>
+
+  <div id="app" class="stack" hidden>
+    <p>Signed in as <strong id="who"></strong> — <button type="button" id="sign-out-btn" class="btn secondary">Sign out</button></p>
+
+    <section>
+      <h2>Orders</h2>
+      <p class="notice" id="orders-loading">Loading orders…</p>
+      <div class="notice empty" id="orders-empty" hidden><p>No orders yet. Orders appear here the moment a buyer pays.</p></div>
+      <div style="overflow-x:auto"><table class="orders" id="orders-table" hidden>
+        <thead><tr><th>Date</th><th>Buyer</th><th>Items</th><th>Total</th><th>Ship to</th><th>Status</th><th></th></tr></thead>
+        <tbody id="orders-body"></tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>Your listings on the website</h2>
+      <p class="meta">Tick “On website” to list an item on the shop, and set how many you have in stock. Changes save when you tick or edit a number. Items not ticked, or with 0 stock, never appear on the shop.</p>
+      <p class="notice" id="listings-loading">Loading listings…</p>
+      <div class="notice empty" id="listings-empty" hidden><p>No listings yet. Create one in the Resale Hub app first.</p></div>
+      <div style="overflow-x:auto"><table class="orders" id="listings-table" hidden>
+        <thead><tr><th>Item</th><th>Price</th><th>On website</th><th>Stock</th></tr></thead>
+        <tbody id="listings-body"></tbody>
+      </table></div>
+    </section>
+  </div>
+</main>
+<footer class="site">
+  <div class="foot-in">
+    <nav><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
+    <span>&copy; 2026 Diddlerrr.</span>
+  </div>
+</footer>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+<script>
+(function () {
+  const errorEl = document.getElementById('error');
+  const setupNote = document.getElementById('setup-note');
+  const CFG = window.STORE_CONFIG || {};
+
+  if (!CFG.firebase || !CFG.firebase.apiKey || CFG.firebase.apiKey.indexOf('YOUR_') === 0) {
+    setupNote.hidden = false;
+    setupNote.textContent = 'Seller sign-in is not set up yet: the Firebase web API key is missing from config.js. See the storefront README.';
+    document.getElementById('signin').hidden = true;
+    return;
+  }
+  if (typeof firebase === 'undefined') {
+    setupNote.hidden = false;
+    setupNote.textContent = 'Could not load Firebase sign-in (network or CDN blocked). Check your connection and try again.';
+    document.getElementById('signin').hidden = true;
+    return;
+  }
+  firebase.initializeApp(CFG.firebase);
+  const auth = firebase.auth();
+
+  async function authed(path, opts) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not signed in');
+    const token = await user.getIdToken();
+    return RH.api(path, { ...(opts || {}), headers: { Authorization: 'Bearer ' + token } });
+  }
+
+  function addr(a) {
+    if (!a) return '—';
+    return [a.line1, a.line2, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(', ');
+  }
+
+  function renderOrders(orders) {
+    const table = document.getElementById('orders-table');
+    const body = document.getElementById('orders-body');
+    document.getElementById('orders-loading').hidden = true;
+    if (!orders.length) {
+      document.getElementById('orders-empty').hidden = false;
+      return;
+    }
+    table.hidden = false;
+    body.innerHTML = orders.map((o) => {
+      const items = (o.items || []).map((l) => RH.esc(l.title) + ' × ' + l.qty).join('<br>');
+      return '<tr><td>' + RH.esc((o.paidAt || o.createdAt || '').slice(0, 10)) + '</td>'
+        + '<td>' + RH.esc(o.buyerEmail || '—') + (o.buyerName ? '<br>' + RH.esc(o.buyerName) : '') + '</td>'
+        + '<td>' + items + '</td>'
+        + '<td>' + RH.esc(RH.moneyCents(o.totalCents)) + '</td>'
+        + '<td>' + RH.esc(addr(o.shippingAddress)) + '</td>'
+        + '<td><span class="pill ' + RH.esc(o.status) + '">' + RH.esc(o.status) + '</span>'
+        + (o.trackingNote ? '<br><span class="meta">' + RH.esc(o.trackingNote) + '</span>' : '') + '</td>'
+        + '<td>' + (o.status === 'paid'
+          ? '<button type="button" class="btn secondary" data-fulfill="' + RH.esc(o.id) + '">Mark fulfilled</button>'
+          : '') + '</td></tr>';
+    }).join('');
+    body.querySelectorAll('[data-fulfill]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const note = prompt('Tracking note (optional — carrier + tracking number):', '') || undefined;
+        btn.disabled = true;
+        try {
+          await authed('/storefront/orders/' + encodeURIComponent(btn.getAttribute('data-fulfill')) + '/fulfill', {
+            method: 'POST',
+            body: JSON.stringify(note ? { trackingNote: note } : {}),
+          });
+          loadAll();
+        } catch (err) {
+          btn.disabled = false;
+          RH.showError(errorEl, err);
+        }
+      });
+    });
+  }
+
+  function renderListings(listings) {
+    const table = document.getElementById('listings-table');
+    const body = document.getElementById('listings-body');
+    document.getElementById('listings-loading').hidden = true;
+    if (!listings.length) {
+      document.getElementById('listings-empty').hidden = false;
+      return;
+    }
+    table.hidden = false;
+    body.innerHTML = listings.map((l) => {
+      const on = l.storefront === true;
+      const stock = typeof l.stock === 'number' ? l.stock : 1;
+      return '<tr><td><a href="/item.html?id=' + encodeURIComponent(l.id) + '">' + RH.esc(l.title) + '</a></td>'
+        + '<td>' + RH.esc(RH.moneyDollars(l.price)) + '</td>'
+        + '<td><input type="checkbox" data-storefront="' + RH.esc(l.id) + '"' + (on ? ' checked' : '') + ' aria-label="List on website"></td>'
+        + '<td><input type="number" min="0" max="999" value="' + stock + '" data-stock="' + RH.esc(l.id) + '" style="width:72px" aria-label="Stock"></td></tr>';
+    }).join('');
+    body.querySelectorAll('[data-storefront]').forEach((box) => {
+      box.addEventListener('change', async () => {
+        try {
+          await authed('/listings/' + encodeURIComponent(box.getAttribute('data-storefront')), {
+            method: 'PATCH',
+            body: JSON.stringify({ storefront: box.checked }),
+          });
+        } catch (err) {
+          box.checked = !box.checked;
+          RH.showError(errorEl, err);
+        }
+      });
+    });
+    body.querySelectorAll('[data-stock]').forEach((input) => {
+      input.addEventListener('change', async () => {
+        const v = Math.max(0, Math.min(999, Number(input.value) || 0));
+        try {
+          await authed('/listings/' + encodeURIComponent(input.getAttribute('data-stock')), {
+            method: 'PATCH',
+            body: JSON.stringify({ stock: v }),
+          });
+          input.value = String(v);
+        } catch (err) {
+          RH.showError(errorEl, err);
+        }
+      });
+    });
+  }
+
+  async function loadAll() {
+    try {
+      const [orders, listings] = await Promise.all([
+        authed('/storefront/orders'),
+        authed('/listings'),
+      ]);
+      renderOrders(Array.isArray(orders) ? orders : []);
+      renderListings(Array.isArray(listings) ? listings : []);
+    } catch (err) {
+      RH.showError(errorEl, err);
+    }
+  }
+
+  document.getElementById('sign-in-btn').addEventListener('click', async () => {
+    errorEl.hidden = true;
+    try {
+      await auth.signInWithEmailAndPassword(
+        document.getElementById('email').value.trim(),
+        document.getElementById('password').value,
+      );
+    } catch (err) {
+      RH.showError(errorEl, err);
+    }
+  });
+  document.getElementById('sign-out-btn').addEventListener('click', () => auth.signOut());
+
+  auth.onAuthStateChanged((user) => {
+    const signedIn = Boolean(user);
+    document.getElementById('signin').hidden = signedIn;
+    document.getElementById('app').hidden = !signedIn;
+    if (signedIn) {
+      document.getElementById('who').textContent = user.email || user.uid;
+      loadAll();
+    }
+  });
+})();
+</script>
+</body>
+</html>

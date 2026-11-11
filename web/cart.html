@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cart — Resale Hub</title>
+<meta name="description" content="Your cart at Resale Hub by Diddlerrr.">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="/favicon.png">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="/"><img src="/favicon.png" alt="" width="36" height="36"><span>Resale Hub<small>by Diddlerrr</small></span></a>
+    <nav>
+      <a href="/">Shop</a>
+      <a class="cart-link" href="/cart.html">Cart <span class="badge" data-cart-count hidden></span></a>
+    </nav>
+  </div>
+</header>
+<main>
+  <h1>Your cart</h1>
+  <p class="notice error" id="error" hidden></p>
+  <p class="notice ok" id="cancelled" hidden>Checkout was cancelled — your cart is still here.</p>
+  <div id="cart-wrap" class="stack">
+    <div id="lines"></div>
+    <div class="buybox" id="summary" hidden>
+      <div class="field">
+        <label for="email">Email for your receipt (optional — Stripe also asks at checkout)</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <p><strong>Subtotal: <span id="subtotal"></span></strong></p>
+      <p class="meta">Shipping and total are confirmed on the secure checkout page. Prices are re-checked against the shop before you pay.</p>
+      <button class="btn block" id="checkout" type="button">Check out securely</button>
+      <p class="meta">You will be taken to Stripe's secure checkout. The shop never sees or stores your card number.</p>
+    </div>
+  </div>
+  <div class="notice empty" id="empty" hidden>
+    <h2>Your cart is empty</h2>
+    <p><a href="/">Browse the shop</a> to add something.</p>
+  </div>
+  <p class="notice" id="loading">Loading your cart…</p>
+</main>
+<footer class="site">
+  <div class="foot-in">
+    <nav><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
+    <span>&copy; 2026 Diddlerrr.</span>
+  </div>
+</footer>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+<script>
+(function () {
+  const errorEl = document.getElementById('error');
+  const loading = document.getElementById('loading');
+  const empty = document.getElementById('empty');
+  const linesEl = document.getElementById('lines');
+  const summary = document.getElementById('summary');
+  const subtotalEl = document.getElementById('subtotal');
+  if (new URLSearchParams(location.search).get('checkout') === 'cancelled') {
+    document.getElementById('cancelled').hidden = false;
+  }
+
+  const cart = RH.loadCart();
+  if (!cart.length) {
+    loading.hidden = true;
+    empty.hidden = false;
+    return;
+  }
+
+  // Fetch the real listings for the cart lines (prices come from the shop).
+  Promise.all(cart.map((l) =>
+    RH.api('/storefront/listings/' + encodeURIComponent(l.id))
+      .then((item) => ({ line: l, item }))
+      .catch(() => ({ line: l, item: null })),
+  )).then((rows) => {
+    loading.hidden = true;
+    const available = rows.filter((r) => r.item);
+    const gone = rows.filter((r) => !r.item);
+    if (gone.length) {
+      // Drop lines the shop no longer sells and say so plainly.
+      gone.forEach((r) => RH.setQty(r.line.id, 0));
+      RH.showError(errorEl, new Error('Some items in your cart are no longer available and were removed.'));
+    }
+    if (!available.length) {
+      empty.hidden = false;
+      return;
+    }
+    summary.hidden = false;
+    render(available);
+  }).catch((err) => {
+    loading.hidden = true;
+    RH.showError(errorEl, err);
+  });
+
+  function render(rows) {
+    let subtotal = 0;
+    linesEl.innerHTML = rows.map(({ line, item }) => {
+      const qty = Math.min(line.qty, typeof item.stock === 'number' ? item.stock : line.qty);
+      subtotal += item.price * qty;
+      const img = (item.photos && item.photos[0]) || item.thumbnail || '';
+      return '<div class="card"><div class="card-body">'
+        + '<h2><a href="/item.html?id=' + encodeURIComponent(item.id) + '">' + RH.esc(item.title) + '</a></h2>'
+        + (img ? '<img src="' + RH.esc(img) + '" alt="" style="aspect-ratio:4/3;object-fit:cover;border-radius:8px;">' : '')
+        + '<div class="price">' + RH.esc(RH.moneyDollars(item.price)) + ' each</div>'
+        + '<div class="meta">' + RH.esc(item.condition || 'used') + '</div>'
+        + '<div class="row"><label>Qty <input type="number" min="1" max="' + Math.max(1, typeof item.stock === 'number' ? item.stock : 99)
+        + '" value="' + qty + '" data-qty-for="' + RH.esc(item.id) + '" style="width:72px"></label>'
+        + '<button type="button" class="btn secondary" data-remove="' + RH.esc(item.id) + '">Remove</button></div>'
+        + '<div><strong>Line total: ' + RH.esc(RH.moneyDollars(item.price * qty)) + '</strong></div>'
+        + '</div></div>';
+    }).join('');
+    subtotalEl.textContent = RH.moneyDollars(subtotal);
+    linesEl.querySelectorAll('[data-qty-for]').forEach((input) => {
+      input.addEventListener('change', () => {
+        RH.setQty(input.getAttribute('data-qty-for'), Number(input.value) || 0);
+        location.reload();
+      });
+    });
+    linesEl.querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        RH.setQty(btn.getAttribute('data-remove'), 0);
+        location.reload();
+      });
+    });
+  }
+
+  document.getElementById('checkout').addEventListener('click', async (e) => {
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = 'Starting secure checkout…';
+    errorEl.hidden = true;
+    try {
+      const email = document.getElementById('email').value.trim() || undefined;
+      const res = await RH.api('/storefront/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ items: RH.loadCart(), ...(email ? { email } : {}) }),
+      });
+      if (res && res.url) location.href = res.url;
+      else throw new Error('Checkout did not return a payment page. Please try again.');
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Check out securely';
+      if (err && err.data && Array.isArray(err.data.unavailable) && err.data.unavailable.length) {
+        err.data.unavailable.forEach((id) => RH.setQty(id, 0));
+        err.message = 'Some items in your cart are no longer available and were removed. Please review your cart and try again.';
+        setTimeout(() => location.reload(), 1500);
+      }
+      RH.showError(errorEl, err);
+    }
+  });
+})();
+</script>
+</body>
+</html>

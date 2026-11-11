@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Item — Resale Hub</title>
+<meta name="description" content="Buy direct from Resale Hub by Diddlerrr.">
+<meta property="og:title" content="Resale Hub — Shop direct">
+<meta property="og:description" content="Buy direct from Resale Hub by Diddlerrr. Secure checkout, shipped by the seller.">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="/favicon.png">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="/"><img src="/favicon.png" alt="" width="36" height="36"><span>Resale Hub<small>by Diddlerrr</small></span></a>
+    <nav>
+      <a href="/">Shop</a>
+      <a class="cart-link" href="/cart.html">Cart <span class="badge" data-cart-count hidden></span></a>
+    </nav>
+  </div>
+</header>
+<main>
+  <p><a href="/">&larr; Back to shop</a></p>
+  <p class="notice error" id="error" hidden></p>
+  <p class="notice" id="loading">Loading item…</p>
+  <div class="detail" id="detail" hidden>
+    <div class="gallery">
+      <div class="main"><img id="main-photo" src="" alt=""></div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <div class="buybox">
+      <h1 id="title"></h1>
+      <div class="price" id="price"></div>
+      <div class="meta" id="meta"></div>
+      <p class="desc" id="desc"></p>
+      <div class="row">
+        <label class="qty">Qty <input type="number" id="qty" value="1" min="1" max="99" inputmode="numeric"></label>
+        <button class="btn" id="add" type="button">Add to cart</button>
+        <button class="btn secondary" id="buy-now" type="button">Buy now</button>
+      </div>
+      <p class="notice ok" id="added" hidden>Added to your cart.</p>
+      <div class="share">
+        <h2>Share this item</h2>
+        <div class="row">
+          <button type="button" id="share-native">Share…</button>
+          <button type="button" id="share-copy">Copy link</button>
+          <a id="share-x" href="#" target="_blank" rel="noopener">Post on X</a>
+          <a id="share-fb" href="#" target="_blank" rel="noopener">Share on Facebook</a>
+          <a id="share-mail" href="#">Share by email</a>
+        </div>
+        <div class="promo">
+          <label for="promo-text"><strong>Promote it</strong> — copy-ready post text:</label>
+          <textarea id="promo-text" readonly></textarea>
+          <div class="row"><button type="button" id="promo-copy">Copy post text</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="site">
+  <div class="foot-in">
+    <nav><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
+    <span>&copy; 2026 Diddlerrr.</span>
+  </div>
+</footer>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+<script>
+(function () {
+  const id = new URLSearchParams(location.search).get('id') || '';
+  const errorEl = document.getElementById('error');
+  const loading = document.getElementById('loading');
+  const detail = document.getElementById('detail');
+
+  if (!id) {
+    loading.hidden = true;
+    RH.showError(errorEl, new Error('No item selected.'));
+    return;
+  }
+
+  RH.api('/storefront/listings/' + encodeURIComponent(id))
+    .then((l) => {
+      loading.hidden = true;
+      detail.hidden = false;
+      document.title = l.title + ' — Resale Hub';
+      document.getElementById('title').textContent = l.title;
+      document.getElementById('price').textContent = RH.moneyDollars(l.price);
+      const meta = [l.condition || 'used', l.category || ''].filter(Boolean).join(' · ')
+        + (typeof l.stock === 'number' && l.stock <= 3 ? ' · Only ' + l.stock + ' left' : ' · In stock');
+      document.getElementById('meta').textContent = meta;
+      document.getElementById('desc').textContent = l.description || 'No description provided.';
+      const photos = (l.photos && l.photos.length ? l.photos : (l.thumbnail ? [l.thumbnail] : []));
+      const main = document.getElementById('main-photo');
+      const thumbs = document.getElementById('thumbs');
+      function show(i) {
+        main.src = photos[i] || '';
+        main.alt = l.title;
+        thumbs.querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+      }
+      photos.forEach((p, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(i === 0));
+        b.innerHTML = '<img src="' + RH.esc(p) + '" alt="Photo ' + (i + 1) + '">';
+        b.addEventListener('click', () => show(i));
+        thumbs.appendChild(b);
+      });
+      if (photos.length) show(0);
+      else main.alt = 'No photo';
+
+      const qtyInput = document.getElementById('qty');
+      qtyInput.max = String(Math.max(1, Math.min(99, typeof l.stock === 'number' ? l.stock : 1)));
+      const qty = () => Math.max(1, Math.min(Number(qtyInput.max), Number(qtyInput.value) || 1));
+      document.getElementById('add').addEventListener('click', () => {
+        RH.addToCart(l.id, qty());
+        document.getElementById('added').hidden = false;
+      });
+      document.getElementById('buy-now').addEventListener('click', () => {
+        RH.addToCart(l.id, qty());
+        location.href = '/cart.html';
+      });
+
+      // Share / promote
+      const url = RH.itemUrl(l.id);
+      const text = RH.shareText(l);
+      document.getElementById('share-x').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url);
+      document.getElementById('share-fb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
+      document.getElementById('share-mail').href = 'mailto:?subject=' + encodeURIComponent(text) + '&body=' + encodeURIComponent(url);
+      document.getElementById('share-copy').addEventListener('click', async (e) => {
+        const ok = await RH.copyText(url);
+        e.target.textContent = ok ? 'Link copied!' : 'Copy failed — long-press the address bar to copy';
+      });
+      document.getElementById('share-native').addEventListener('click', async () => {
+        if (navigator.share) {
+          try { await navigator.share({ title: l.title, text, url }); } catch { /* user cancelled */ }
+        } else {
+          await RH.copyText(url);
+          alert('Sharing is not supported in this browser — the link was copied instead.');
+        }
+      });
+      const promo = 'For sale: ' + l.title + ' — ' + RH.moneyDollars(l.price) + ' (' + (l.condition || 'used') + '). Buy direct here: ' + url;
+      document.getElementById('promo-text').value = promo;
+      document.getElementById('promo-copy').addEventListener('click', async (e) => {
+        const ok = await RH.copyText(promo);
+        e.target.textContent = ok ? 'Copied!' : 'Copy failed';
+      });
+    })
+    .catch((err) => {
+      loading.hidden = true;
+      RH.showError(errorEl, err);
+    });
+})();
+</script>
+</body>
+</html>
