@@ -50,7 +50,6 @@
         + '<span class="method' + (s.method === 'api' ? ' api' : '') + '">' + RH.esc(methodLabel) + '</span><br>'
         + '<span class="meta">' + RH.esc(s.feeNote) + ' ' + RH.esc(s.note) + '</span></span></label>';
     }).join('');
-    document.getElementById('prepare-btn').disabled = false;
   }
 
   function renderListings() {
@@ -133,16 +132,24 @@
     });
   }
 
+  async function loadSites() {
+    // Public endpoint — no sign-in needed, by design (see crosspost.js).
+    try {
+      const siteRows = await RH.api('/crosspost/sites');
+      sites = Array.isArray(siteRows) ? siteRows : [];
+      renderSites();
+    } catch (err) {
+      RH.showError(errorEl, err);
+    }
+  }
+
   async function loadAll() {
     try {
-      const [siteRows, listingRows] = await Promise.all([
-        authed('/crosspost/sites'),
-        authed('/crosspost/listings'),
-      ]);
-      sites = Array.isArray(siteRows) ? siteRows : [];
+      const listingRows = await authed('/crosspost/listings');
       listings = Array.isArray(listingRows) ? listingRows : [];
-      renderSites();
       renderListings();
+      document.getElementById('prepare-btn').disabled = false;
+      document.getElementById('prepare-note').hidden = true;
     } catch (err) {
       RH.showError(errorEl, err);
     }
@@ -184,6 +191,10 @@
     }
   });
   document.getElementById('sign-out-btn').addEventListener('click', () => auth.signOut());
+
+  // Sites are public — load them on page load, signed in or not.
+  // Listings still need a sign-in, and load only after auth below.
+  loadSites();
 
   auth.onAuthStateChanged((user) => {
     const signedIn = Boolean(user);
