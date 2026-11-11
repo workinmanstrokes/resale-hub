@@ -6,6 +6,7 @@ const { HttpError } = require('./lib/errors');
 const { limits } = require('./middleware/rateLimit');
 const accountRoutes = require('./routes/account');
 const listingsRoutes = require('./routes/listings');
+const crosspostRoutes = require('./routes/crosspost');
 const searchRoutes = require('./routes/search');
 const ebayRoutes = require('./routes/ebay');
 const uploadsRoutes = require('./routes/uploads');
@@ -26,6 +27,7 @@ function createApp() {
   api.get('/marketplaces', (req, res) => res.json(adapters.list()));
   api.use('/account', accountRoutes);
   api.use('/listings', listingsRoutes);
+  api.use('/crosspost', crosspostRoutes);
   api.use('/search', searchRoutes);
   api.use('/ebay', ebayRoutes);
   api.use('/uploads', uploadsRoutes);
