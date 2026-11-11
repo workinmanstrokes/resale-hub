@@ -12,7 +12,7 @@ window.STORE_CONFIG = {
   tagline: 'Shop direct — secure checkout, shipped by the seller.',
   apiUrl: 'https://resale-hub-api.vercel.app/api',
   firebase: {
-    apiKey: 'YOUR_FIREBASE_WEB_API_KEY',
+    apiKey: 'AIzaSyDegPUHseJPcMbeaxOfIQuTUDnosjsGkvY',
     authDomain: 'resale-hub-6a648.firebaseapp.com',
     projectId: 'resale-hub-6a648',
     appId: '1:613695085581:web:82a994dd5d2ca61af40944',
