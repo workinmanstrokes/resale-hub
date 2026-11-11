@@ -9,6 +9,12 @@ rules_version = '2';
 //  - users/{uid}/private/*:    eBay OAuth tokens. Never readable or writable by clients.
 //  - listings/{id}:            owner-only read/write, with validated fields. Clients can
 //                              never set or change publishing state (targets) or ownership.
+//                              `storefront` + `stock` (added for the direct-sale
+//                              website) are owner-settable; they only control whether
+//                              the public shop shows the listing.
+//  - orders/{id}:              server-only. Buyers confirm an order through the API
+//                              with their Stripe session id; the seller reads orders
+//                              through the API with an ID token. No client access.
 //  - everything else:          denied (rateLimits, oauthStates, unknown collections).
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -39,7 +45,8 @@ service cloud.firestore {
     function validListing(d) {
       return d.keys().hasOnly(['userId', 'title', 'description', 'price', 'condition',
                                'category', 'ebayCategoryId', 'ebayCategoryName', 'photos',
-                               'thumbnail', 'targets', 'createdAt', 'updatedAt'])
+                               'thumbnail', 'targets', 'createdAt', 'updatedAt',
+                               'storefront', 'stock'])
         && d.userId == request.auth.uid
         && d.title is string && d.title.size() > 0 && d.title.size() <= 80
         && (d.price is int || d.price is float) && d.price > 0 && d.price <= 1000000
@@ -50,7 +57,10 @@ service cloud.firestore {
             || (d.ebayCategoryId is string && d.ebayCategoryId.matches('[0-9]{1,10}')))
         && optionalString(d, 'ebayCategoryName', 300)
         && validPhotos(d)
-        && validThumbnail(d);
+        && validThumbnail(d)
+        // Direct-sale website fields (optional; default false / 1 in the API).
+        && (!('storefront' in d) || d.storefront is bool)
+        && (!('stock' in d) || (d.stock is int && d.stock >= 0 && d.stock <= 999));
     }
 
     match /listings/{listingId} {
@@ -63,6 +73,13 @@ service cloud.firestore {
         && validListing(request.resource.data)
         && request.resource.data.get('targets', {}) == resource.data.get('targets', {});
       allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ---- orders (direct-sale website) ---------------------------------------
+    // Written only by the API (Admin SDK) on Stripe checkout/webhook events.
+    // Clients never read or write orders directly.
+    match /orders/{orderId} {
+      allow read, write: if false;
     }
 
     // Server-only bookkeeping and anything not listed above.
