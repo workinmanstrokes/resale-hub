@@ -191,6 +191,17 @@
     }
   });
   document.getElementById('sign-out-btn').addEventListener('click', () => auth.signOut());
+  document.getElementById('reset-btn').addEventListener('click', async () => {
+    errorEl.hidden = true;
+    const email = document.getElementById('email').value.trim();
+    if (!email) { RH.showError(errorEl, new Error('Put your email in the Email box first, then tap Send password reset link.')); return; }
+    try {
+      await auth.sendPasswordResetEmail(email);
+      RH.showError(errorEl, new Error('Reset link sent to ' + email + ' — check your inbox (and spam) and set a new password, then sign in above.'));
+    } catch (err) {
+      RH.showError(errorEl, err);
+    }
+  });
 
   // Sites are public — load them on page load, signed in or not.
   // Listings still need a sign-in, and load only after auth below.
