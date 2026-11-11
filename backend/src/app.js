@@ -9,12 +9,16 @@ const listingsRoutes = require('./routes/listings');
 const searchRoutes = require('./routes/search');
 const ebayRoutes = require('./routes/ebay');
 const uploadsRoutes = require('./routes/uploads');
+const storefrontRoutes = require('./routes/storefront');
 
 function createApp() {
   const app = express();
   app.set('trust proxy', true); // Vercel / Cloudflare front ends set X-Forwarded-For
   app.disable('x-powered-by');
   app.use(cors());
+  // Stripe webhook needs the raw body for signature verification — must come before express.json().
+  app.use('/api/storefront/webhook', express.raw({ type: 'application/json' }));
+  app.use('/storefront/webhook', express.raw({ type: 'application/json' }));
   app.use(express.json({ limit: '1mb' }));
 
   const api = express.Router();
@@ -25,6 +29,7 @@ function createApp() {
   api.use('/search', searchRoutes);
   api.use('/ebay', ebayRoutes);
   api.use('/uploads', uploadsRoutes);
+  api.use('/storefront', storefrontRoutes);
 
   // Served under /api on every host (https://<host>/api/...); also mounted at / so a
   // host that strips the prefix still works.
@@ -45,7 +50,6 @@ function createApp() {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   });
-
   return app;
 }
 
