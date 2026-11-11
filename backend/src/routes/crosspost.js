@@ -1,9 +1,6 @@
 // Resale Hub -> post-everywhere hub (free-to-list sites only).
 //
 // Seller routes (Firebase Auth, uid must be STORE_SELLER_UID):
-//   GET  /crosspost/sites            the 6 free-to-list sites, how each one
-//                                    is reached, and what it costs (nothing
-//                                    to list — a fee only if the item sells)
 //   GET  /crosspost/listings         the seller's own listings, for picking
 //                                    one to cross-post
 //   POST /crosspost/:id/prepare      build an identical, per-site formatted
@@ -12,6 +9,11 @@
 //                                    NEVER 'posted'. Nothing is posted here.
 //   POST /crosspost/:id/mark-posted  the seller records that THEY published
 //                                    a prepared listing on a site themselves.
+//
+// Public route (no sign-in — it only names the 6 sites, nothing private):
+//   GET  /crosspost/sites            the 6 free-to-list sites, how each one
+//                                    is reached, and what it costs (nothing
+//                                    to list — a fee only if the item sells)
 //
 // Honesty rules (do not weaken these):
 // - Only eBay has an official API publish path, and it lives in the
@@ -266,8 +268,6 @@ function cleanPrepareBody(body = {}) {
 
 router.get(
   '/sites',
-  requireAuth,
-  requireSeller,
   limits.general,
   wrap(async (req, res) => {
     res.json(SITES.map(publicSite));
