@@ -16,6 +16,9 @@
 // Seller routes (Firebase Auth, uid must be STORE_SELLER_UID):
 //   GET  /storefront/orders            all orders, newest first
 //   POST /storefront/orders/:id/fulfill  mark an order fulfilled (+ tracking)
+//   POST /storefront/listings          create a listing that shows in the
+//                                      catalog at once (Card PreGrade posts
+//                                      here; title + price required)
 //
 // Prices in Firestore are dollars (the existing listings schema). Stripe
 // takes cents; conversion is Math.round(dollars * 100) here, on the server.
@@ -454,6 +457,51 @@ router.post(
     });
     const after = await ref.get();
     res.json(publicOrder(after.id, after.data()));
+  }),
+);
+
+// ---- Seller: create a listing ----------------------------------------------
+//
+// Card PreGrade (and any seller client) posts here with the seller's Firebase
+// ID token. The listing is written with userId = STORE_SELLER_UID, storefront
+// true and stock 1, so it shows in the catalog at once — the same visibility
+// rules the catalog reads. ownerId is written alongside userId: the shop
+// currently keys on ownerId (the catalog query uses ownerId with the
+// storefront filter in memory, because the composite index does not exist),
+// and a listing should not be invisible to one side of the shop because of
+// which field it was created with. Photos: the shop serves photos[] URLs; a
+// client with no upload path sends a small `thumbnail` data URL instead
+// (<= 60,000 chars), which the shop frontend already falls back to when
+// photos[] is empty. Nothing is invented: title and a non-negative price are
+// required, and the price is stored exactly as sent.
+router.post(
+  '/listings',
+  requireAuth,
+  requireSeller,
+  limits.general,
+  wrap(async (req, res) => {
+    const b = req.body || {};
+    const title = typeof b.title === 'string' ? b.title.trim() : '';
+    if (!title || title.length > 80) throw new HttpError(400, 'A listing needs a title (1-80 characters).');
+    const price = Number(b.price);
+    if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'A listing needs a price of $0 or more.');
+    const condition = b.condition == null ? 'used' : b.condition;
+    if (!['new', 'used', 'refurbished'].includes(condition)) throw new HttpError(400, 'Condition must be new, used or refurbished.');
+    const category = typeof b.category === 'string' ? b.category.slice(0, 80) : '';
+    const description = typeof b.description === 'string' ? b.description.slice(0, 2000) : '';
+    const photos = Array.isArray(b.photos) ? b.photos.filter(p => typeof p === 'string' && /^https?:\/\//.test(p)).slice(0, 12) : [];
+    const thumbnail = typeof b.thumbnail === 'string' ? b.thumbnail : null;
+    if (thumbnail && thumbnail.length > 60000) throw new HttpError(400, 'Thumbnail is too large (60,000 character limit).');
+    const cfg = sellerConfigOr503();
+    const now = FieldValue.serverTimestamp();
+    const doc = {
+      userId: cfg.sellerUid, ownerId: cfg.sellerUid, storefront: true, stock: 1,
+      title, price, condition, category, description, photos, thumbnail,
+      createdAt: now, updatedAt: now,
+    };
+    const ref = await listingsCol().add(doc);
+    const snap = await ref.get();
+    res.status(201).json(publicListing(snap.id, snap.data()));
   }),
 );
 

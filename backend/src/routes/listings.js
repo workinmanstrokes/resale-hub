@@ -148,11 +148,15 @@ router.post('/', wrap(async (req, res) => {
   const ref = await col().add({
     ...data,
     ownerId: req.user.uid,
+    // The storefront catalog currently keys on ownerId, but userId is the
+    // field the catalog has keyed on before: write both so a listing created
+    // here is visible in the shop once flagged (storefront: true) and in stock.
+    userId: req.user.uid,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
     targets,
   });
-  res.status(201).json(serialize(ref.id, { ...data, ownerId: req.user.uid }));
+  res.status(201).json(serialize(ref.id, { ...data, ownerId: req.user.uid, userId: req.user.uid }));
 }));
 
 router.get('/:id', wrap(async (req, res) => {

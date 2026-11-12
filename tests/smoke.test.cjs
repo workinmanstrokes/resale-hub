@@ -59,6 +59,7 @@ function query(colName, filters, limitN) {
 const fakeDb = {
   collection: (name) => ({
     doc: (id) => docRef(name, id || ('auto-' + (autoId++))),
+    add: async (data) => { const id = 'auto-' + (autoId++); store[name].set(id, { ...data }); return docRef(name, id); },
     where: (field, op, value) => query(name, [{ field, op, value }], null),
     get: async () => query(name, [], null).get(),
   }),
@@ -201,7 +202,7 @@ async function main() {
   let r = await j('/storefront/listings');
   check('catalog returns exactly the 1 visible listing', r.status === 200 && Array.isArray(r.body) && r.body.length === 1, JSON.stringify(r.body));
   check('catalog price is the real Firestore price (49.99)', r.body[0] && r.body[0].price === 49.99);
-  check('catalog hides ownerId/targets', r.body[0] && !('ownerId' in r.body[0]) && !('targets' in r.body[0]));
+  check('catalog hides ownerId/targets', r.body[0] && !('ownerId' in r.body[0]) && !('userId' in r.body[0]) && !('targets' in r.body[0]));
   r = await j('/storefront/listings/L1');
   check('detail returns the listing', r.status === 200 && r.body.title === 'Charizard 1999 Base Set');
   r = await j('/storefront/listings/L2');
