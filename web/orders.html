@@ -182,14 +182,19 @@
   }
 
   async function loadAll() {
+    // Load each list on its own: one failing must not blank the other.
     try {
-      const [orders, listings] = await Promise.all([
-        authed('/storefront/orders'),
-        authed('/listings'),
-      ]);
+      const orders = await authed('/storefront/orders');
       renderOrders(Array.isArray(orders) ? orders : []);
+    } catch (err) {
+      document.getElementById('orders-loading').hidden = true;
+      RH.showError(errorEl, err);
+    }
+    try {
+      const listings = await authed('/listings');
       renderListings(Array.isArray(listings) ? listings : []);
     } catch (err) {
+      document.getElementById('listings-loading').hidden = true;
       RH.showError(errorEl, err);
     }
   }
