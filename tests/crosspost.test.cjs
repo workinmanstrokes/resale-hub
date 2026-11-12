@@ -144,7 +144,7 @@ app.use((err, req, res, next) => {
 function seed() {
   const longTitle = 'Charizard 1999 Base Set Holographic Pokemon Trading Card Near Mint Sleeved Kept In Binder Since New Rare Vintage';
   store.docs.set('listings/L1', {
-    userId: 'seller-1',
+    ownerId: 'seller-1',
     title: 'Charizard 1999 Base Set',
     description: 'Near mint 1999 base set Charizard, kept sleeved.',
     price: 49.99,
@@ -158,7 +158,7 @@ function seed() {
     updatedAt: '2026-11-06T00:00:00.000Z',
   });
   store.docs.set('listings/L2', {
-    userId: 'seller-1',
+    ownerId: 'seller-1',
     title: longTitle,
     description: 'A very long-titled card.',
     price: 10,
@@ -171,7 +171,7 @@ function seed() {
     updatedAt: '2026-11-06T00:00:00.000Z',
   });
   store.docs.set('listings/L3', {
-    userId: 'seller-2',
+    ownerId: 'seller-2',
     title: 'Not mine',
     description: 'Belongs to another seller.',
     price: 5,
@@ -184,7 +184,7 @@ function seed() {
     updatedAt: '2026-11-06T00:00:00.000Z',
   });
   store.docs.set('listings/L4', {
-    userId: 'seller-1',
+    ownerId: 'seller-1',
     title: '',
     description: 'Has a description but no title.',
     price: 5,

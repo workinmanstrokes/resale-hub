@@ -113,9 +113,13 @@ router.get('/', wrap(async (req, res) => {
     err.status = 401;
     throw err;
   }
-  const snap = await col().where('ownerId', '==', req.user.uid)
-    .orderBy('updatedAt', 'desc').get();
-  res.json(snap.docs.map((d) => serialize(d.id, d.data())));
+  // Single-field query only: where() + orderBy() on different fields needs a
+  // Firestore composite index that does not exist, and it 500s the page.
+  // Sort in memory instead, newest first.
+  const snap = await col().where('ownerId', '==', req.user.uid).get();
+  const rows = snap.docs.map((d) => serialize(d.id, d.data()));
+  rows.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  res.json(rows);
 }));
 
 router.post('/', wrap(async (req, res) => {
