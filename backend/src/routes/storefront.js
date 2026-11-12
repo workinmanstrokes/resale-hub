@@ -45,7 +45,7 @@ function iso(v) {
   return v;
 }
 
-// Only the fields a buyer needs. Never userId, targets, or eBay internals.
+// Only the fields a buyer needs. Never ownerId, targets, or eBay internals.
 function publicListing(id, d) {
   return {
     id,
@@ -94,7 +94,7 @@ async function loadSellableListing(cfg, id) {
   const snap = await listingsCol().doc(id).get();
   if (!snap.exists) return null;
   const d = snap.data();
-  if (d.userId !== cfg.sellerUid || d.storefront !== true) return null;
+  if (d.ownerId !== cfg.sellerUid || d.storefront !== true) return null;
   const stock = typeof d.stock === 'number' ? d.stock : 1;
   if (stock <= 0) return null;
   return { id: snap.id, data: d, stock };
@@ -107,12 +107,14 @@ router.get(
   limits.general,
   wrap(async (req, res) => {
     const cfg = sellerConfigOr503();
+    // Single-field query only: a second where() on storefront would need a
+    // Firestore composite index. Filter storefront in memory below instead.
     const snap = await listingsCol()
-      .where('userId', '==', cfg.sellerUid)
-      .where('storefront', '==', true)
+      .where('ownerId', '==', cfg.sellerUid)
       .get();
     let rows = snap.docs
       .map((d) => ({ id: d.id, data: d.data() }))
+      .filter((r) => r.data.storefront === true)
       .filter((r) => (typeof r.data.stock === 'number' ? r.data.stock : 1) > 0)
       .map((r) => publicListing(r.id, r.data));
     const q = String(req.query.q || '').trim().toLowerCase();

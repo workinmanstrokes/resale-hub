@@ -137,7 +137,7 @@ async function loadOwnListing(cfg, id) {
   const snap = await listingsCol().doc(id).get();
   if (!snap.exists) return null;
   const d = snap.data();
-  if (d.userId !== cfg.sellerUid) return null;
+  if (d.ownerId !== cfg.sellerUid) return null;
   return { id: snap.id, data: d };
 }
 
@@ -281,7 +281,7 @@ router.get(
   limits.general,
   wrap(async (req, res) => {
     const cfg = getStoreConfig();
-    const snap = await listingsCol().where('userId', '==', cfg.sellerUid).get();
+    const snap = await listingsCol().where('ownerId', '==', cfg.sellerUid).get();
     const rows = snap.docs.map((d) => sellerListing(d.id, d.data()));
     rows.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
     res.json(rows.slice(0, 100));
