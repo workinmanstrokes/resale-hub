@@ -214,6 +214,14 @@
     if (signedIn) {
       document.getElementById('who').textContent = user.email || user.uid;
       loadAll();
+    } else {
+      // Signed out: never leave a "Loading…" notice spinning with no fetch
+      // coming. (The #app section is hidden too; this is belt and braces.)
+      document.getElementById('listings-loading').hidden = true;
+      document.getElementById('listings-empty').hidden = true;
+      document.getElementById('listing-picker').hidden = true;
+      document.getElementById('results-section').hidden = true;
+      document.getElementById('prepare-note').hidden = false;
     }
   });
 })();
