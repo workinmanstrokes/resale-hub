@@ -3,15 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Post everywhere — Resale Hub</title>
-<meta name="description" content="Prepare one Resale Hub listing for Facebook Marketplace, Whatnot, Poshmark, Mercari, OfferUp and eBay — free to list, fee only on sale.">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<title>Post everywhere — Diddler Deals</title>
+<meta name="description" content="Prepare one Diddler Deals listing for Facebook Marketplace, Whatnot, Poshmark, Mercari, OfferUp and eBay — free to list, fee only on sale.">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="/favicon.png">
 <style>
   .site-pick { display: grid; gap: 8px; }
   .site-pick label {
     display: flex; gap: 10px; align-items: flex-start;
-    border: 1px solid var(--line); border-radius: 8px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
     padding: 10px 12px; background: var(--card); cursor: pointer;
   }
   .site-pick input { margin-top: 4px; }
@@ -19,29 +23,35 @@
     display: inline-block; font-size: 12px; font-weight: 700;
     padding: 2px 8px; border-radius: 999px; background: #eef1f3;
   }
-  .site-pick .method.api { background: #dff2e3; color: var(--accent); }
+  .site-pick .method.api { background: #dff2e3; color: var(--ok); }
   .site-pick .meta { color: var(--muted); font-size: 13px; }
   .prepared { display: grid; gap: 16px; }
   .prepared .card-body pre {
     white-space: pre-wrap; word-break: break-word;
     font: inherit; font-size: 14px; background: var(--bg);
-    border: 1px solid var(--line); border-radius: 8px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
     padding: 10px; margin: 8px 0;
   }
   .prepared .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .posted-flag { font-size: 13px; font-weight: 700; color: var(--accent); }
+  .posted-flag { font-size: 13px; font-weight: 700; color: var(--ok); }
 </style>
 </head>
 <body>
 <header class="top">
   <div class="top-in">
-    <a class="brand" href="/"><img src="/favicon.png" alt="" width="36" height="36"><span>Resale Hub<small>by Diddlerrr</small></span></a>
+    <a class="brand" href="/" aria-label="Diddler Deals — home">
+      <span class="brand-mark" aria-hidden="true">D</span>
+      <span class="brand-text">
+        <span class="brand-name">Diddler Deals</span>
+        <span class="brand-sub">by Diddlerrr</span>
+      </span>
+    </a>
     <nav><a href="/">Shop</a><a href="/orders.html">Orders</a></nav>
   </div>
 </header>
 <main>
   <h1>Post everywhere</h1>
-  <p class="meta">Pick one of your listings, tick the sites you want it on, and get an identical listing prepared for each one. All six sites are <strong>free to list</strong> — a fee only applies if the item sells. Nothing here posts for you on Facebook Marketplace, Whatnot, Poshmark, Mercari or OfferUp: those sites have no public listing API, so you open their create page, paste the prepared text, and tap Publish yourself. eBay is the one exception — it publishes from the Resale Hub mobile app (My Listings &rarr; eBay).</p>
+  <p class="meta">Pick one of your listings, tick the sites you want it on, and get an identical listing prepared for each one. All six sites are <strong>free to list</strong> — a fee only applies if the item sells. Nothing here posts for you on Facebook Marketplace, Whatnot, Poshmark, Mercari or OfferUp: those sites have no public listing API, so you open their create page, paste the prepared text, and tap Publish yourself. eBay is the one exception — it publishes from the Diddler Deals mobile app (My Listings &rarr; eBay).</p>
   <p class="notice error" id="error" hidden></p>
   <p class="notice" id="setup-note" hidden></p>
 
@@ -58,7 +68,7 @@
     <section>
       <h2>1. Pick a listing</h2>
       <p class="notice" id="listings-loading">Loading your listings…</p>
-      <div class="notice empty" id="listings-empty" hidden><p>No listings yet. Create one in the Resale Hub app first.</p></div>
+      <div class="notice empty" id="listings-empty" hidden><p>No listings yet. Create one in the Diddler Deals app first.</p></div>
       <div class="field" id="listing-picker" hidden>
         <label for="listing">Listing</label>
         <select id="listing"></select>
@@ -67,7 +77,7 @@
 
     <section id="results-section" hidden>
       <h2>3. Publish each one</h2>
-      <p class="meta">Copy the prepared text, open the site, paste it, add your photos, and tap Publish there. Then come back and tap “I posted it” so Resale Hub remembers where it’s live.</p>
+      <p class="meta">Copy the prepared text, open the site, paste it, add your photos, and tap Publish there. Then come back and tap “I posted it” so Diddler Deals remembers where it’s live.</p>
       <div class="prepared" id="results"></div>
     </section>
   </div>
@@ -82,8 +92,12 @@
 </main>
 <footer class="site">
   <div class="foot-in">
-    <nav><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
-    <span>&copy; 2026 Diddlerrr. Resale Hub is not affiliated with, endorsed by, or sponsored by eBay Inc., Meta Platforms, Inc., Whatnot, Inc., Poshmark, Inc., Mercari, Inc., or OfferUp, Inc.</span>
+    <div class="foot-brand">
+      <strong>Diddler Deals</strong>
+      <span>by Diddlerrr</span>
+    </div>
+    <nav aria-label="Footer"><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
+    <span class="affil">&copy; 2026 Diddlerrr. Diddler Deals is not affiliated with, endorsed by, or sponsored by eBay Inc., Meta Platforms, Inc., Whatnot, Inc., Poshmark, Inc., Mercari, Inc., or OfferUp, Inc.</span>
   </div>
 </footer>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>

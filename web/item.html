@@ -3,17 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Item — Resale Hub</title>
-<meta name="description" content="Buy direct from Resale Hub by Diddlerrr.">
-<meta property="og:title" content="Resale Hub — Shop direct">
-<meta property="og:description" content="Buy direct from Resale Hub by Diddlerrr. Secure checkout, shipped by the seller.">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<title>Item — Diddler Deals</title>
+<meta name="description" content="Buy direct from Diddler Deals by Diddlerrr.">
+<meta property="og:title" content="Diddler Deals — Shop direct">
+<meta property="og:description" content="Buy direct from Diddler Deals by Diddlerrr. Secure checkout, shipped by the seller.">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="/favicon.png">
 </head>
 <body>
 <header class="top">
   <div class="top-in">
-    <a class="brand" href="/"><img src="/favicon.png" alt="" width="36" height="36"><span>Resale Hub<small>by Diddlerrr</small></span></a>
+    <a class="brand" href="/" aria-label="Diddler Deals — home">
+      <span class="brand-mark" aria-hidden="true">D</span>
+      <span class="brand-text">
+        <span class="brand-name">Diddler Deals</span>
+        <span class="brand-sub">by Diddlerrr</span>
+      </span>
+    </a>
     <nav>
       <a href="/">Shop</a>
       <a class="cart-link" href="/cart.html">Cart <span class="badge" data-cart-count hidden></span></a>
@@ -40,6 +50,7 @@
         <button class="btn secondary" id="buy-now" type="button">Buy now</button>
       </div>
       <p class="notice ok" id="added" hidden>Added to your cart.</p>
+      <p class="trust-note"><span class="mark" aria-hidden="true">✓</span> Secure checkout via Stripe &nbsp;·&nbsp; Ships fast &nbsp;·&nbsp; Seller-verified</p>
       <div class="share">
         <h2>Share this item</h2>
         <div class="row">
@@ -60,8 +71,12 @@
 </main>
 <footer class="site">
   <div class="foot-in">
-    <nav><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
-    <span>&copy; 2026 Diddlerrr.</span>
+    <div class="foot-brand">
+      <strong>Diddler Deals</strong>
+      <span>by Diddlerrr</span>
+    </div>
+    <nav aria-label="Footer"><a href="/">Shop</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/delete-account">Delete account</a></nav>
+    <span class="affil">&copy; 2026 Diddlerrr.</span>
   </div>
 </footer>
 <script src="/config.js"></script>
@@ -83,7 +98,7 @@
     .then((l) => {
       loading.hidden = true;
       detail.hidden = false;
-      document.title = l.title + ' — Resale Hub';
+      document.title = l.title + ' — Diddler Deals';
       document.getElementById('title').textContent = l.title;
       document.getElementById('price').textContent = RH.moneyDollars(l.price);
       const meta = [l.condition || 'used', l.category || ''].filter(Boolean).join(' · ')

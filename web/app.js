@@ -91,7 +91,7 @@
   }
 
   function shareText(listing) {
-    return `${listing.title} — ${moneyDollars(listing.price)} on ${CFG.storeName || 'Resale Hub'}`;
+    return `${listing.title} — ${moneyDollars(listing.price)} on ${CFG.storeName || 'Diddler Deals'}`;
   }
 
   async function copyText(text) {

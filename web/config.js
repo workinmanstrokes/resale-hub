@@ -7,7 +7,7 @@
 // Fill in FIREBASE_API_KEY from Firebase console > Project settings > General
 // (or copy it from mobile/src/api/config.js). API_URL is the deployed API.
 window.STORE_CONFIG = {
-  storeName: 'Resale Hub',
+  storeName: 'Diddler Deals',
   sellerName: 'Diddlerrr',
   tagline: 'Shop direct — secure checkout, shipped by the seller.',
   apiUrl: 'https://resale-hub-api.vercel.app/api',

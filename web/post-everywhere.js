@@ -4,7 +4,7 @@
 // a deep link into each site's own create flow. Nothing here posts to a
 // marketplace: for Facebook Marketplace, Whatnot, Poshmark, Mercari and
 // OfferUp there is no public API, so the seller taps Publish there.
-// eBay publishes from the Resale Hub mobile app (My Listings -> eBay).
+// eBay publishes from the Diddler Deals mobile app (My Listings -> eBay).
 // No listings, prices or "posted" statuses are ever invented here —
 // everything comes from the API, and "I posted it" is only recorded
 // when the seller taps it themselves.
