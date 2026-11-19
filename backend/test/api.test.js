@@ -225,6 +225,13 @@ test('full flow: account, eBay connect, eBay-hosted photos, listings, publish, r
   assert.equal(listing.price, 199.5);
   assert.equal(listing.thumbnail, THUMB);
   assert.deepEqual(listing.targets, []);
+  assert.equal(listing.storefront, false);
+  assert.equal(listing.stock, 1);
+  const stored = (await db.doc(`listings/${listing.id}`).get()).data();
+  assert.equal(stored.userId, a.localId);
+  assert.equal(stored.ownerId, a.localId, 'shop and crosspost look listings up by ownerId');
+  assert.equal((await (await call('/listings', { token: a.idToken })).json()).length, 1);
+  assert.equal((await call('/listings', { token: a.idToken, method: 'POST', body: { title: 'x', price: 1, stock: 1.5 } })).status, 400);
 
   assert.equal((await call(`/listings/${listing.id}`, { token: b.idToken })).status, 404, 'other users cannot read');
   assert.equal((await (await call('/listings', { token: b.idToken })).json()).length, 0);

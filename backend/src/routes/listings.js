@@ -6,6 +6,7 @@ const { limits } = require('../middleware/rateLimit');
 const { db, FieldValue } = require('../lib/firebase');
 const { HttpError, wrap } = require('../lib/errors');
 const ebayAccount = require('../lib/ebayAccount');
+
 const router = express.Router();
 router.use(requireAuth, limits.general);
 
@@ -15,6 +16,7 @@ const MAX_PHOTOS = 12;
 // Listings can show it even after an unused eBay-hosted photo expires.
 const MAX_THUMBNAIL_CHARS = 60_000;
 const col = () => db.collection('listings');
+
 function iso(v) {
   if (!v) return null;
   if (typeof v.toDate === 'function') return v.toDate().toISOString();
@@ -51,52 +53,53 @@ function serialize(id, d) {
 }
 
 // Validates a create (all fields) or patch (only provided fields) body.
-function clean(body = {}, { partial } = {}) {
+function clean(body = {}, { partial }) {
   const out = {};
   const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
+
   if (!partial || has('title')) {
-    out.title = String(body.title || '').trim();
-    if (!partial && !out.title) throw new HttpError(400, 'title is required');
+    const title = String(body.title || '').trim();
+    if (!title) throw new HttpError(400, 'Title is required');
+    if (title.length > 80) throw new HttpError(400, 'Title must be 80 characters or fewer (eBay limit)');
+    out.title = title;
   }
   if (!partial || has('price')) {
     const price = Number(body.price);
-    if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'price must be a number >= 0');
-    out.price = price;
-  }
-  if (!partial || has('description')) {
-    out.description = String(body.description || '').trim();
-  }
-  if (!partial || has('condition')) {
-    if (!CONDITIONS.includes(body.condition)) throw new HttpError(400, 'condition must be new, used or refurbished');
-    out.condition = body.condition;
-  }
-  if (!partial || has('category')) {
-    out.category = String(body.category || '').trim() || null;
-  }
-  if (!partial || has('ebayCategoryId')) {
-    if (body.ebayCategoryId == null) {
-      out.ebayCategoryId = null;
-      out.ebayCategoryName = null;
-    } else {
-      const cat = adapters.ebay.categoryById(String(body.ebayCategoryId));
-      if (!cat) throw new HttpError(400, 'unknown ebayCategoryId');
-      out.ebayCategoryId = String(cat.id);
-      out.ebayCategoryName = cat.name;
+    if (!Number.isFinite(price) || price <= 0 || price > 1_000_000) {
+      throw new HttpError(400, 'Price must be a positive number');
     }
+    out.price = Math.round(price * 100) / 100;
+  }
+  if (!partial || has('description')) out.description = String(body.description || '').trim().slice(0, 4000);
+  if (!partial || has('condition')) {
+    out.condition = CONDITIONS.includes(body.condition) ? body.condition : 'used';
+  }
+  if (!partial || has('category')) out.category = String(body.category || '').trim().slice(0, 100);
+  if (!partial || has('ebayCategoryId')) {
+    const id = body.ebayCategoryId == null ? '' : String(body.ebayCategoryId).trim();
+    if (id && !/^\d{1,10}$/.test(id)) throw new HttpError(400, 'Invalid eBay category');
+    out.ebayCategoryId = id || null;
+    out.ebayCategoryName = id ? String(body.ebayCategoryName || '').slice(0, 300) : null;
   }
   if (!partial || has('photos')) {
-    if (!Array.isArray(body.photos)) throw new HttpError(400, 'photos must be an array');
-    if (body.photos.length > MAX_PHOTOS) throw new HttpError(400, `at most ${MAX_PHOTOS} photos`);
-    out.photos = body.photos.map((p) => String(p)).filter(Boolean);
+    const photos = Array.isArray(body.photos) ? body.photos : [];
+    if (photos.length > MAX_PHOTOS) throw new HttpError(400, `Up to ${MAX_PHOTOS} photos per listing`);
+    for (const p of photos) {
+      if (typeof p !== 'string' || !/^https?:\/\//.test(p) || p.length > 2048) {
+        throw new HttpError(400, 'Photos must be http(s) URLs');
+      }
+    }
+    out.photos = photos;
   }
   if (!partial || has('thumbnail')) {
-    const thumbnail = String(body.thumbnail || '');
-    if (thumbnail.length > MAX_THUMBNAIL_CHARS) throw new HttpError(400, 'thumbnail is too large');
-    out.thumbnail = thumbnail || null;
+    const t = body.thumbnail == null ? '' : String(body.thumbnail);
+    if (t && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t) || t.length > MAX_THUMBNAIL_CHARS)) {
+      throw new HttpError(400, 'Thumbnail must be a small base64 JPEG/PNG/WebP data URL');
+    }
+    out.thumbnail = t || null;
   }
-  if (!partial || has('storefront')) {
-    out.storefront = body.storefront === true;
-  }
+  // Direct-sale website fields (see routes/storefront.js): off and 1 in stock by default.
+  if (!partial || has('storefront')) out.storefront = body.storefront === true;
   if (!partial || has('stock')) {
     const stock = body.stock == null ? 1 : Number(body.stock);
     if (!Number.isInteger(stock) || stock < 0 || stock > 999) {
@@ -107,122 +110,153 @@ function clean(body = {}, { partial } = {}) {
   return out;
 }
 
-router.get('/', wrap(async (req, res) => {
-  if (!req.user) {
-    const err = new Error('unauthorized'); // keep newer sessions logged in (Firebase)
-    err.status = 401;
-    throw err;
-  }
-  // Single-field query only: where() + orderBy() on different fields needs a
-  // Firestore composite index that does not exist, and it 500s the page.
-  // Sort in memory instead, newest first.
-  const snap = await col().where('ownerId', '==', req.user.uid).get();
-  const rows = snap.docs.map((d) => serialize(d.id, d.data()));
-  rows.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
-  res.json(rows);
-}));
-
-router.post('/', wrap(async (req, res) => {
-  if (!req.user) {
-    const err = new Error('unauthorized');
-    err.status = 401;
-    throw err;
-  }
-  const data = clean(req.body);
-  const postToEbay = req.body.postToEbay === true;
-  const targets = {};
-  if (postToEbay) {
-    const account = await ebayAccount.getEbayAccount(req.user.uid);
-    if (!account) throw new HttpError(400, 'eBay account not connected');
-    const data2 = data;
-    const listing = { ...data2, ownerId: req.user.uid };
-    await ebay.createListing(listing, account);
-    const url = await ebay.getListingUrl(account, listing);
-    targets.ebay = {
-      status: 'listed',
-      externalId: listing.ebay?.itemId,
-      url,
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-  }
-  const ref = await col().add({
-    ...data,
-    ownerId: req.user.uid,
-    // The storefront catalog currently keys on ownerId, but userId is the
-    // field the catalog has keyed on before: write both so a listing created
-    // here is visible in the shop once flagged (storefront: true) and in stock.
-    userId: req.user.uid,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-    targets,
-  });
-  res.status(201).json(serialize(ref.id, { ...data, ownerId: req.user.uid, userId: req.user.uid }));
-}));
-
-router.get('/:id', wrap(async (req, res) => {
-  const d = await getListing(req, res);
-  res.json(serialize(req.params.id, d));
-}));
-
-router.patch('/:id', wrap(async (req, res) => {
-  const d = await getListing(req, res);
-  const data = clean(req.body, { partial: true });
-  if (Object.keys(data).length === 0) throw new HttpError(400, 'nothing to update');
-  await col().doc(req.params.id).update({
-    ...data, updatedAt: FieldValue.serverTimestamp(),
-  });
-  res.json(serialize(req.params.id, { ...d, ...data }));
-}));
-
-router.delete('/:id', wrap(async (req, res) => {
-  const d = await getListing(req, res);
-  if (d.targets?.ebay?.status === 'listed') {
-    const message = `Listing ${req.params.id} is already listed on eBay`;
-    res.status(409).json({ error: message });
-    return;
-  }
-  await col().doc(req.params.id).delete();
-  res.sendStatus(204);
-}));
-
-async function getListing(req, res) {
-  const snap = await col().doc(req.params.id).get();
-  if (!snap.exists) {
-    res.status(404).json({ error: 'Listing not found' });
-    return null;
-  }
-  if (snap.data().ownerId !== req.user.uid) {
-    res.status(403).json({ error: 'Not your listing' });
-    throw new Error('not your listing');
-  }
-  return snap.data();
+async function getOwned(uid, id) {
+  const snap = await col().doc(id).get();
+  if (!snap.exists || snap.data().userId !== uid) throw new HttpError(404, 'Listing not found');
+  return snap;
 }
 
-router.post('/:id/ebay', wrap(async (req, res) => {
-  const d = await getListing(req, res);
-  if (d.targets?.ebay?.status === 'listed') {
-    res.status(409).json({ error: 'Listing is already listed on eBay' });
-    return;
+router.get(
+  '/',
+  wrap(async (req, res) => {
+    const snap = await col().where('userId', '==', req.uid).limit(500).get();
+    const rows = snap.docs.map((d) => serialize(d.id, d.data()));
+    rows.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    res.json(rows);
+  })
+);
+
+router.get(
+  '/:id',
+  wrap(async (req, res) => {
+    const snap = await getOwned(req.uid, req.params.id);
+    res.json(serialize(snap.id, snap.data()));
+  })
+);
+
+router.post(
+  '/',
+  wrap(async (req, res) => {
+    const data = clean(req.body, { partial: false });
+    const ref = col().doc();
+    await ref.set({
+      ...data,
+      userId: req.uid,
+      // The shop catalog and crosspost routes look listings up by ownerId; write it
+      // alongside userId (the field the rules, account deletion and this router use).
+      ownerId: req.uid,
+      targets: {},
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const snap = await ref.get();
+    res.status(201).json(serialize(snap.id, snap.data()));
+  })
+);
+
+router.patch(
+  '/:id',
+  wrap(async (req, res) => {
+    const snap = await getOwned(req.uid, req.params.id);
+    const before = snap.data();
+    const patch = clean(req.body, { partial: true });
+    const update = { ...patch, updatedAt: FieldValue.serverTimestamp() };
+    // Live marketplace copies are now stale until the user republishes.
+    for (const [key, t] of Object.entries(before.targets || {})) {
+      if (t.status === 'published') update[`targets.${key}.outOfDate`] = true;
+    }
+    await snap.ref.update(update);
+    const after = await snap.ref.get();
+    res.json(serialize(after.id, after.data()));
+  })
+);
+
+router.delete(
+  '/:id',
+  wrap(async (req, res) => {
+    const snap = await getOwned(req.uid, req.params.id);
+    const listing = snap.data();
+    const result = { deleted: true, ebayEnded: false, ebayError: null };
+
+    // Also end the eBay listing unless the app asked to keep it (?endOnEbay=false).
+    const ebayTarget = listing.targets?.ebay;
+    if (ebayTarget?.sku && req.query.endOnEbay !== 'false') {
+      try {
+        const token = await ebayAccount.getUserAccessToken(req.uid);
+        await ebay.endListing(token, ebayTarget.sku);
+        result.ebayEnded = true;
+      } catch (err) {
+        result.ebayError = err.message;
+      }
+    }
+
+    // Photos are hosted by eBay (EPS), not by us: unused ones expire on eBay's side.
+    await snap.ref.delete();
+    res.json(result);
+  })
+);
+
+// Resolve the free-text Category (+ title) to a real eBay leaf category via the
+// Taxonomy API when the user didn't pick one explicitly.
+async function ensureEbayCategory(ref, listing) {
+  if (listing.ebayCategoryId) return listing;
+  const query = [listing.category, listing.title].filter(Boolean).join(' ');
+  const [top] = await ebay.suggestCategories(query);
+  if (!top) {
+    throw new HttpError(400, 'Could not match an eBay category. Pick one on the edit screen.');
   }
-  const account = await ebayAccount.getEbayAccount(req.user.uid);
-  if (!account) throw new HttpError(400, 'eBay account not connected');
-  const listing = { ...d, id: req.params.id };
-  const result = await ebay.createListing(listing, account);
-  const url = await ebay.getListingUrl(account, listing);
-  const target = {
-    status: 'listed',
-    externalId: result?.ebay?.itemId || listing.ebay?.itemId,
-    url,
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-  await col().doc(req.params.id).update({
-    targets: { ...d.targets, ebay: target },
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-  res.status(201).json(serialize(req.params.id, {
-    ...d,
-    targets: { ...d.targets, ebay: target },
-  }));
-}));
+  await ref.update({ ebayCategoryId: top.categoryId, ebayCategoryName: top.path });
+  return { ...listing, ebayCategoryId: top.categoryId, ebayCategoryName: top.path };
+}
+
+router.post(
+  '/:id/publish',
+  limits.publish,
+  wrap(async (req, res) => {
+    const snap = await getOwned(req.uid, req.params.id);
+    let listing = { id: snap.id, ...snap.data() };
+
+    const requested = Array.isArray(req.body?.marketplaces) ? [...new Set(req.body.marketplaces)] : [];
+    if (!requested.length) return res.status(400).json({ error: 'marketplaces[] is required' });
+
+    const results = [];
+    for (const key of requested.slice(0, 10)) {
+      const adapter = adapters.get(key);
+      if (!adapter || !adapter.capabilities.includes('publish')) {
+        // Not stored: the app only offers marketplaces that can really publish.
+        results.push({
+          marketplace: key,
+          status: 'unsupported',
+          error: adapter?.note || `${adapter?.label || key} does not support publishing`,
+        });
+        continue;
+      }
+
+      let target;
+      try {
+        // Only eBay can publish today.
+        const token = await ebayAccount.getUserAccessToken(req.uid);
+        const settings = await ebayAccount.getSettings(req.uid);
+        listing = await ensureEbayCategory(snap.ref, listing);
+        const published = await adapter.publish(listing, { token, settings });
+        target = { status: 'published', ...published, error: null, outOfDate: false };
+      } catch (err) {
+        const notConnected = err.extra?.code === 'not_connected';
+        target = {
+          ...(listing.targets?.[key] || {}),
+          status: notConnected ? 'not_connected' : 'failed',
+          error: err.message,
+        };
+      }
+      target.updatedAt = FieldValue.serverTimestamp();
+      await snap.ref.update({ [`targets.${key}`]: target });
+      results.push({ marketplace: key, status: target.status, error: target.error, url: target.url || null });
+    }
+
+    const after = await snap.ref.get();
+    res.json({ listing: serialize(after.id, after.data()), results });
+  })
+);
 
 module.exports = router;
+module.exports.clean = clean;
